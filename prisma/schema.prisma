@@ -1,0 +1,293 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------------------------------
+// 1. RBAC & Admin Users
+// -------------------------------------------------------------
+model Admin {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  fullName       String
+  role           String          @default("OFFICER") // SUPER_ADMIN, OFFICER, REVIEWER
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  screenings     ApplicantScreening[]
+  contacts       ApplicantContact[]
+  selections     ApplicantSelection[]
+  notes          ApplicantNote[]
+  auditLogs      AuditLog[]
+
+  @@map("admins")
+}
+
+// -------------------------------------------------------------
+// 2. Courses & Settings
+// -------------------------------------------------------------
+model Course {
+  id                 String          @id @default(cuid())
+  code               String          @unique // e.g. BAKERY-2026-01
+  title              String
+  description        String?
+  imageUrl           String?
+  startDate          DateTime?
+  endDate            DateTime?
+  timeSlot           String?
+  location           String?
+  capacity           Int             @default(20) // จำนวนที่รับ เช่น 20
+  targetAudience     String?
+  qualifications     String?
+  openDate           DateTime?
+  closeDate          DateTime?
+  department         String?         // หน่วยงานผู้รับผิดชอบ
+  responsiblePerson  String?         // เจ้าหน้าที่รับผิดชอบ
+  status             String          @default("OPEN") // DRAFT, OPEN, FULL, CLOSED, COMPLETED, CANCELLED
+  allowWaitlist      Boolean         @default(true)
+  uniqueCheckField   String          @default("ID_CARD") // ID_CARD, PHONE, EMAIL
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  forms              Form[]
+  applications       Application[]
+  requiredDocuments  CourseDocumentConfig[]
+
+  @@map("courses")
+}
+
+model CourseDocumentConfig {
+  id          String   @id @default(cuid())
+  courseId    String
+  title       String   // e.g. "สำเนาบัตรประชาชน", "รูปถ่ายหน้าตรง", "วุฒิการศึกษา"
+  description String?
+  isRequired  Boolean  @default(true)
+  fileType    String?  // "image/*,application/pdf"
+  maxSizeMb   Int      @default(5)
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("course_document_configs")
+}
+
+// -------------------------------------------------------------
+// 3. Form Templates & Dynamic Forms
+// -------------------------------------------------------------
+model FormTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   // ช่างไฟฟ้า, ช่างยนต์, เบเกอรี่, ทั่วไป
+  description String?
+  schemaJson  String   // JSON string of sections and questions
+  createdAt   DateTime @default(now())
+
+  @@map("form_templates")
+}
+
+model Form {
+  id          String        @id @default(cuid())
+  courseId    String
+  title       String
+  description String?
+  version     Int           @default(1)
+  isPublished Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  sections    FormSection[]
+  applications Application[]
+
+  @@map("forms")
+}
+
+model FormSection {
+  id          String         @id @default(cuid())
+  formId      String
+  title       String
+  description String?
+  orderIndex  Int            @default(0)
+
+  form        Form           @relation(fields: [formId], references: [id], onDelete: Cascade)
+  questions   FormQuestion[]
+
+  @@map("form_sections")
+}
+
+model FormQuestion {
+  id           String      @id @default(cuid())
+  sectionId    String
+  label        String
+  description  String?
+  questionType String      // TEXT, LONG_TEXT, NUMBER, PHONE, ID_CARD, EMAIL, RADIO, CHECKBOX, DROPDOWN, DATE, DOB, FILE, YES_NO
+  isRequired   Boolean     @default(false)
+  optionsJson  String?     // ["ม.3", "ม.6", "ปวช.", "ปวส.", "ปริญญาตรี"]
+  validation   String?     // Regex or rules
+  orderIndex   Int         @default(0)
+
+  section      FormSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  answers      ApplicantAnswer[]
+
+  @@map("form_questions")
+}
+
+// -------------------------------------------------------------
+// 4. Applications & Core Data
+// -------------------------------------------------------------
+model Application {
+  id                String       @id @default(cuid())
+  applicationNumber String       @unique // APP-2026-000001
+  courseId          String
+  formId            String
+  formVersion       Int          @default(1)
+
+  // Fast-access primary fields
+  idCardNumber      String       // 13 digits
+  firstName         String
+  lastName          String
+  phoneNumber       String
+  email             String?
+  age               Int?
+  occupation        String?
+  educationLevel    String?
+  address           String?
+
+  submittedAt       DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  course            Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  form              Form         @relation(fields: [formId], references: [id], onDelete: Cascade)
+  answers           ApplicantAnswer[]
+  documents         ApplicantDocument[]
+  
+  screening         ApplicantScreening?
+  contacts          ApplicantContact[]
+  selection         ApplicantSelection?
+  notes             ApplicantNote[]
+  auditLogs         AuditLog[]
+
+  @@index([courseId])
+  @@index([idCardNumber])
+  @@index([phoneNumber])
+  @@map("applications")
+}
+
+model ApplicantAnswer {
+  id            String       @id @default(cuid())
+  applicationId String
+  questionId    String
+  answerValue   String       // Stored as string or json string
+  createdAt     DateTime     @default(now())
+
+  application   Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  question      FormQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("applicant_answers")
+}
+
+model ApplicantDocument {
+  id            String       @id @default(cuid())
+  applicationId String
+  documentTitle String       // "บัตรประชาชน", "รูปถ่าย"
+  fileUrl       String       // Drive link or local link
+  driveFileId   String?
+  mimeType      String?
+  fileSizeBytes Int?
+  status        String       @default("PENDING") // PENDING, APPROVED, REJECTED, REQUEST_REUPLOAD
+  reviewNote    String?
+  createdAt     DateTime     @default(now())
+
+  application   Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("applicant_documents")
+}
+
+// -------------------------------------------------------------
+// 5. Screening, Contact & Selection Workflow (Crucial Engine)
+// -------------------------------------------------------------
+model ApplicantScreening {
+  id                  String       @id @default(cuid())
+  applicationId       String       @unique
+  qualificationStatus String       @default("PENDING") // PENDING, QUALIFIED, NOT_QUALIFIED
+  disqualifiedReason  String?      // คุณสมบัติไม่ตรงตามประกาศ, อายุเกิน, เอกสารไม่ครบ
+  evaluatedAt         DateTime?
+  evaluatedById       String?
+  notes               String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  application         Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  evaluatedBy         Admin?       @relation(fields: [evaluatedById], references: [id])
+
+  @@map("applicant_screenings")
+}
+
+model ApplicantContact {
+  id             String       @id @default(cuid())
+  applicationId  String
+  contactStatus  String       @default("NOT_CONTACTED") // NOT_CONTACTED, CONTACTED, NO_ANSWER, CALL_BACK
+  interestStatus String       @default("UNKNOWN")       // UNKNOWN, INTERESTED, NOT_INTERESTED, UNDECIDED
+  contactDate    DateTime     @default(now())
+  calledById     String?
+  notes          String?      // บันทึกผลการโทร เช่น "ยืนยันเข้าอบรม 15 ต.ค."
+  callAttempt    Int          @default(1)
+
+  application    Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  calledBy       Admin?       @relation(fields: [calledById], references: [id])
+
+  @@map("applicant_contacts")
+}
+
+model ApplicantSelection {
+  id             String       @id @default(cuid())
+  applicationId  String       @unique
+  selectionStatus String      @default("PENDING") // PENDING, SELECTED, WAITLIST, REJECTED, WITHDRAWN
+  waitlistOrder  Int?         // 1, 2, 3...
+  selectedDate   DateTime?
+  selectedById   String?
+  remarks        String?
+  isOverridden   Boolean      @default(false)     // ในกรณีรับเกินโควต้าด้วยสิทธิ์พิเศษ
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  application    Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  selectedBy     Admin?       @relation(fields: [selectedById], references: [id])
+
+  @@map("applicant_selections")
+}
+
+model ApplicantNote {
+  id            String       @id @default(cuid())
+  applicationId String
+  authorId      String
+  content       String
+  createdAt     DateTime     @default(now())
+
+  application   Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  author        Admin        @relation(fields: [authorId], references: [id])
+
+  @@map("applicant_notes")
+}
+
+model AuditLog {
+  id            String       @id @default(cuid())
+  adminId       String?
+  applicationId String?
+  action        String       // STATUS_CHANGE, SCREENING_EVALUATE, CALL_LOG, SELECTION_DECIDE, WAITLIST_PROMOTE
+  fieldChanged  String?
+  oldValue      String?
+  newValue      String?
+  details       String?
+  ipAddress     String?
+  createdAt     DateTime     @default(now())
+
+  admin         Admin?       @relation(fields: [adminId], references: [id])
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
