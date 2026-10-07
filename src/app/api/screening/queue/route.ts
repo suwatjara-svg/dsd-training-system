@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { getCoursesFromSheet, getApplicationsFromSheet, getContactsFromSheet } from '@/lib/googleSheetsDb';
 
 export async function GET(request: Request) {
   try {
@@ -11,104 +11,54 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get('courseId');
-    const filter = searchParams.get('filter') || 'ALL'; // ALL, PENDING_QUAL, QUALIFIED_UNCONTACTED, INTERESTED_UNSELECTED, SELECTED, WAITLIST
+    const filter = searchParams.get('filter') || 'ALL';
 
-    if (!courseId) {
-      return NextResponse.json({ error: 'courseId is required' }, { status: 400 });
-    }
-
-    // 1. Get Course & Capacity Stats
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
-      include: {
-        _count: {
-          select: { applications: true },
-        },
-      },
-    });
+    const courses = await getCoursesFromSheet();
+    const course = courses.find((c) => c.id === courseId) || courses[0];
 
     if (!course) {
-      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+      return NextResponse.json({
+        stats: { capacity: 0, totalApplicants: 0, selectedCount: 0, waitlistCount: 0, remainingSlots: 0, isFull: false },
+        applicants: [],
+      });
     }
 
-    // Calculate funnel counts
-    const [
-      screenedCount,
-      qualifiedCount,
-      notQualifiedCount,
-      selectedCount,
-      waitlistCount,
-      contactedCount,
-      interestedCount,
-    ] = await Promise.all([
-      prisma.applicantScreening.count({
-        where: { application: { courseId }, qualificationStatus: { not: 'PENDING' } },
-      }),
-      prisma.applicantScreening.count({
-        where: { application: { courseId }, qualificationStatus: 'QUALIFIED' },
-      }),
-      prisma.applicantScreening.count({
-        where: { application: { courseId }, qualificationStatus: 'NOT_QUALIFIED' },
-      }),
-      prisma.applicantSelection.count({
-        where: { application: { courseId }, selectionStatus: 'SELECTED' },
-      }),
-      prisma.applicantSelection.count({
-        where: { application: { courseId }, selectionStatus: 'WAITLIST' },
-      }),
-      prisma.applicantContact.count({
-        where: { application: { courseId }, contactStatus: 'CONTACTED' },
-      }),
-      prisma.applicantContact.count({
-        where: { application: { courseId }, interestStatus: 'INTERESTED' },
-      }),
-    ]);
+    let rawApps = await getApplicationsFromSheet(course.id);
+    const contacts = await getContactsFromSheet();
 
-    // 2. Query Applicants according to screening queue filter
-    const whereClause: any = { courseId };
-
-    if (filter === 'PENDING_QUAL') {
-      whereClause.screening = { qualificationStatus: 'PENDING' };
-    } else if (filter === 'QUALIFIED_UNCONTACTED') {
-      whereClause.screening = { qualificationStatus: 'QUALIFIED' };
-      whereClause.contacts = { none: { contactStatus: 'CONTACTED' } };
-    } else if (filter === 'INTERESTED_UNSELECTED') {
-      whereClause.screening = { qualificationStatus: 'QUALIFIED' };
-      whereClause.contacts = { some: { interestStatus: 'INTERESTED' } };
-      whereClause.selection = { selectionStatus: 'PENDING' };
-    } else if (filter === 'SELECTED') {
-      whereClause.selection = { selectionStatus: 'SELECTED' };
-    } else if (filter === 'WAITLIST') {
-      whereClause.selection = { selectionStatus: 'WAITLIST' };
-    }
-
-    const applicants = await prisma.application.findMany({
-      where: whereClause,
-      orderBy: { submittedAt: 'asc' },
-      include: {
-        screening: true,
-        contacts: {
-          orderBy: { contactDate: 'desc' },
-          include: { calledBy: { select: { fullName: true } } },
+    // Attach contact details
+    let applicants = rawApps.map((a) => {
+      const appContacts = contacts.filter((c) => c.applicationId === a.id);
+      return {
+        ...a,
+        contacts: appContacts,
+        screening: {
+          qualificationStatus: a.qualificationStatus,
         },
         selection: {
-          include: { selectedBy: { select: { fullName: true } } },
+          selectionStatus: a.selectionStatus,
         },
-        documents: true,
-        answers: {
-          include: { question: true },
-        },
-      },
+      };
     });
+
+    const selectedCount = applicants.filter((a) => a.selectionStatus === 'SELECTED').length;
+    const waitlistCount = applicants.filter((a) => a.selectionStatus === 'WAITLIST').length;
+    const qualifiedCount = applicants.filter((a) => a.qualificationStatus === 'QUALIFIED').length;
+
+    // Apply Filter
+    if (filter === 'PENDING_QUAL') {
+      applicants = applicants.filter((a) => a.qualificationStatus === 'PENDING');
+    } else if (filter === 'SELECTED') {
+      applicants = applicants.filter((a) => a.selectionStatus === 'SELECTED');
+    } else if (filter === 'WAITLIST') {
+      applicants = applicants.filter((a) => a.selectionStatus === 'WAITLIST');
+    }
 
     const stats = {
       capacity: course.capacity,
-      totalApplicants: course._count.applications,
-      screenedCount,
+      totalApplicants: applicants.length,
+      screenedCount: applicants.filter((a) => a.qualificationStatus !== 'PENDING').length,
       qualifiedCount,
-      notQualifiedCount,
-      contactedCount,
-      interestedCount,
       selectedCount,
       waitlistCount,
       remainingSlots: Math.max(0, course.capacity - selectedCount),
@@ -121,7 +71,7 @@ export async function GET(request: Request) {
       applicants,
     });
   } catch (error) {
-    console.error('Screening query error:', error);
-    return NextResponse.json({ error: 'Failed to fetch screening data' }, { status: 500 });
+    console.error('Screening queue error:', error);
+    return NextResponse.json({ error: 'Failed to fetch queue' }, { status: 500 });
   }
 }

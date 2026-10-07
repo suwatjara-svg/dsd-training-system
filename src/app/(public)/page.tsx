@@ -1,26 +1,19 @@
 import React from 'react';
-import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   Calendar,
   MapPin,
   Users,
-  CheckCircle2,
   ArrowRight,
-  GraduationCap,
-  Sparkles,
 } from 'lucide-react';
 import { formatThaiDate } from '@/lib/utils';
+import { getCoursesFromSheet } from '@/lib/googleSheetsDb';
+
+export const dynamic = 'force-dynamic';
 
 export default async function PublicHomePage() {
-  const courses = await prisma.course.findMany({
-    where: { status: 'OPEN' },
-    include: {
-      _count: { select: { applications: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const courses = await getCoursesFromSheet();
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -60,10 +53,6 @@ export default async function PublicHomePage() {
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-sky-900 via-sky-800 to-indigo-950 text-white py-14 px-4 shadow-inner">
         <div className="max-w-4xl mx-auto text-center space-y-4">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-400/30">
-            <Sparkles className="w-3.5 h-3.5" />
-            เปิดรับสมัครบุคคลทั่วไป ประจำปี 2569
-          </span>
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
             พัฒนาทักษะวิชาชีพ ต่อยอดสร้างรายได้
           </h2>
@@ -94,9 +83,6 @@ export default async function PublicHomePage() {
               >
                 <div className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">
-                      {course.code}
-                    </span>
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                       เปิดรับสมัคร
                     </span>
@@ -152,7 +138,7 @@ export default async function PublicHomePage() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400">
-        <p>© 2569 ระบบรับสมัคร คัดเลือก และบริหารผู้เข้าฝึกอบรมออนไลน์ • All rights reserved</p>
+        <p>© 2569 สถาบันพัฒนาฝีมือแรงงาน 4 ราชบุรี • กรมพัฒนาฝีมือแรงงาน</p>
       </footer>
     </div>
   );

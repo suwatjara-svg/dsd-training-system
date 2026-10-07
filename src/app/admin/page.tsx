@@ -10,9 +10,6 @@ import {
   CheckCircle2,
   Calendar,
   MapPin,
-  ChevronRight,
-  Sparkles,
-  Award,
   Layers,
   ArrowRight,
 } from 'lucide-react';
@@ -23,8 +20,7 @@ export default function AdminHomePage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Form states for new course
-  const [code, setCode] = useState('');
+  // Form states for new course (รหัสหลักสูตรเอาออกแล้วตามคำขอ)
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [capacity, setCapacity] = useState('20');
@@ -59,11 +55,14 @@ export default function AdminHomePage() {
     setError('');
 
     try {
+      // สุ่มหรือสร้าง Auto Code เพื่อความง่าย ไม่ต้องให้ผู้ใช้กรอก
+      const autoCode = `DSD4-${Date.now().toString().slice(-4)}`;
+
       const res = await fetch('/api/courses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code,
+          code: autoCode,
           title,
           description,
           capacity: Number(capacity),
@@ -72,11 +71,6 @@ export default function AdminHomePage() {
           startDate: startDate || null,
           endDate: endDate || null,
           qualifications,
-          department: 'สถาบันพัฒนาฝีมือแรงงาน 4 ราชบุรี',
-          documents: [
-            { title: 'สำเนาบัตรประชาชน', isRequired: true },
-            { title: 'รูปถ่ายหน้าตรง', isRequired: true },
-          ],
         }),
       });
 
@@ -84,7 +78,6 @@ export default function AdminHomePage() {
       if (!res.ok) throw new Error(json.error || 'สร้างหลักสูตรไม่สำเร็จ');
 
       setShowCreateModal(false);
-      setCode('');
       setTitle('');
       setDescription('');
       loadCourses();
@@ -151,7 +144,7 @@ export default function AdminHomePage() {
         {loading ? (
           <div className="bg-white rounded-2xl p-16 text-center border border-slate-200">
             <span className="inline-block w-8 h-8 border-4 border-sky-600 border-t-transparent rounded-full animate-spin"></span>
-            <p className="text-xs text-slate-500 mt-3 font-semibold">กำลังโหลดหลักสูตร...</p>
+            <p className="text-xs text-slate-500 mt-3 font-semibold">กำลังโหลดหลักสูตรจาก Google Sheet...</p>
           </div>
         ) : courses.length === 0 ? (
           <div className="bg-white rounded-2xl p-16 text-center border border-slate-200/90 space-y-4">
@@ -176,9 +169,6 @@ export default function AdminHomePage() {
               >
                 <div className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">
-                      {c.code}
-                    </span>
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                       {c.status}
                     </span>
@@ -200,8 +190,8 @@ export default function AdminHomePage() {
                       <strong className="text-slate-800 text-sm mt-0.5 block">{c.capacity} คน</strong>
                     </div>
                     <div className="bg-sky-50 p-2.5 rounded-xl border border-sky-100">
-                      <span className="text-sky-600 block font-medium text-[11px]">สมัครแล้ว</span>
-                      <strong className="text-sky-900 text-sm mt-0.5 block">{c._count?.applications || 0} คน</strong>
+                      <span className="text-sky-600 block font-medium text-[11px]">สถานะ</span>
+                      <strong className="text-sky-900 text-sm mt-0.5 block">เปิดรับสมัคร</strong>
                     </div>
                   </div>
 
@@ -234,13 +224,14 @@ export default function AdminHomePage() {
 
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <Link
-                      href={`/admin/applicants?courseId=${c.id}`}
+                      href={`/apply/${c.id}`}
+                      target="_blank"
                       className="py-1.5 px-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-[11px] font-semibold text-center transition"
                     >
-                      ดูรายชื่อ ({c._count?.applications || 0})
+                      ดูหน้าใบสมัคร
                     </Link>
                     <Link
-                      href={`/admin/waitlist?courseId=${c.id}`}
+                      href={`/admin/screening?courseId=${c.id}&filter=WAITLIST`}
                       className="py-1.5 px-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-[11px] font-semibold text-center transition"
                     >
                       จัดการสำรอง
@@ -274,36 +265,6 @@ export default function AdminHomePage() {
             )}
 
             <form onSubmit={handleCreateCourse} className="space-y-3.5 pt-1">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    รหัสหลักสูตร <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    placeholder="e.g. ELEC-2026-01"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    จำนวนที่รับ (Capacity) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={capacity}
-                    onChange={(e) => setCapacity(e.target.value)}
-                    placeholder="20"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   ชื่อหลักสูตร <span className="text-rose-500">*</span>
@@ -313,7 +274,21 @@ export default function AdminHomePage() {
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="เช่น ช่างติดตั้งระบบไฟฟ้าพลังงานแสงอาทิตย์ (Solar Cell)"
+                  placeholder="เช่น การทำเบเกอรี่และขนมอบเชิงพาณิชย์"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  จำนวนที่รับ (คน) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={capacity}
+                  onChange={(e) => setCapacity(e.target.value)}
+                  placeholder="20"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
                 />
               </div>
@@ -409,7 +384,7 @@ export default function AdminHomePage() {
                   disabled={actionLoading}
                   className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition"
                 >
-                  {actionLoading ? 'กำลังสร้าง...' : 'บันทึกเปิดรับสมัคร'}
+                  {actionLoading ? 'กำลังบันทึก...' : 'บันทึกเปิดรับสมัคร'}
                 </button>
               </div>
             </form>

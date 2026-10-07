@@ -1,10 +1,12 @@
 import React from 'react';
-import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import PublicApplyForm from '@/components/public-form/PublicApplyForm';
-import { GraduationCap, ArrowLeft, Users, Calendar, MapPin, Clock } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { formatThaiDate } from '@/lib/utils';
+import { getCoursesFromSheet } from '@/lib/googleSheetsDb';
+
+export const dynamic = 'force-dynamic';
 
 export default async function PublicApplyPage({
   params,
@@ -13,33 +15,39 @@ export default async function PublicApplyPage({
 }) {
   const { courseId } = await params;
 
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
-    include: {
-      requiredDocuments: true,
-      forms: {
-        where: { isPublished: true },
-        orderBy: { version: 'desc' },
-        take: 1,
-        include: {
-          sections: {
-            orderBy: { orderIndex: 'asc' },
-            include: {
-              questions: {
-                orderBy: { orderIndex: 'asc' },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
+  const courses = await getCoursesFromSheet();
+  const course = courses.find((c) => c.id === courseId);
 
   if (!course) {
     notFound();
   }
 
-  const activeForm = course.forms[0] || null;
+  // Standard application form definition
+  const activeForm = {
+    sections: [
+      {
+        id: 'sec_1',
+        title: 'ข้อมูลความพร้อมและประสบการณ์',
+        questions: [
+          {
+            id: 'q_1',
+            label: 'เป้าหมายและวัตถุประสงค์ในการเข้าฝึกอบรม',
+            questionType: 'LONG_TEXT',
+            isRequired: true,
+          },
+        ],
+      },
+    ],
+  };
+
+  const courseWithDocs = {
+    ...course,
+    requiredDocuments: [
+      { id: 'doc_1', title: 'สำเนาบัตรประชาชน (พร้อมเซ็นรับรองสำเนาถูกต้อง)', isRequired: true },
+      { id: 'doc_2', title: 'รูปถ่ายหน้าตรง 1-2 นิ้ว', isRequired: true },
+      { id: 'doc_3', title: 'สำเนาวุฒิการศึกษา', isRequired: false },
+    ],
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
@@ -53,8 +61,8 @@ export default async function PublicApplyPage({
             <ArrowLeft className="w-4 h-4" />
             <span>กลับหน้ารายการหลักสูตร</span>
           </Link>
-          <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">
-            {course.code}
+          <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+            เปิดรับสมัคร
           </span>
         </div>
       </header>
@@ -103,14 +111,14 @@ export default async function PublicApplyPage({
           {course.qualifications && (
             <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
               <strong className="font-bold block">คุณสมบัติผู้สมัคร:</strong>
-              <p>{course.qualifications}</p>
+              <p className="whitespace-pre-line">{course.qualifications}</p>
             </div>
           )}
         </div>
 
         {/* Dynamic Apply Form Component */}
         <div className="mt-8">
-          <PublicApplyForm course={course} form={activeForm} />
+          <PublicApplyForm course={courseWithDocs} form={activeForm} />
         </div>
       </div>
     </div>

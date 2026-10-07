@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { logAudit } from '@/lib/audit';
+import { addContactToSheet } from '@/lib/googleSheetsDb';
 
 export async function POST(request: Request) {
   try {
@@ -16,42 +15,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
-    // Count attempts
-    const attemptCount = await prisma.applicantContact.count({
-      where: { applicationId },
-    });
-
-    const contactLog = await prisma.applicantContact.create({
-      data: {
-        applicationId,
-        contactStatus,
-        interestStatus: interestStatus || 'UNKNOWN',
-        calledById: user.id,
-        notes,
-        callAttempt: attemptCount + 1,
-      },
-    });
-
-    // If Not Interested, mark selection as WITHDRAWN
-    if (interestStatus === 'NOT_INTERESTED') {
-      await prisma.applicantSelection.upsert({
-        where: { applicationId },
-        update: { selectionStatus: 'WITHDRAWN', remarks: 'ผู้สมัครแจ้งไม่ประสงค์เข้าอบรม' },
-        create: { applicationId, selectionStatus: 'WITHDRAWN', remarks: 'ผู้สมัครแจ้งไม่ประสงค์เข้าอบรม' },
-      });
-    }
-
-    await logAudit({
-      adminId: user.id,
+    const id = `call_${Date.now()}`;
+    await addContactToSheet({
+      id,
       applicationId,
-      action: 'CALL_LOG',
-      fieldChanged: 'contactStatus',
-      oldValue: '',
-      newValue: contactStatus,
-      details: `ผลการติดต่อ: ${contactStatus}, ความต้องการ: ${interestStatus || 'UNKNOWN'}, โน้ต: ${notes || '-'}`,
+      contactStatus,
+      interestStatus: interestStatus || 'UNKNOWN',
+      notes: notes || '',
+      contactDate: new Date().toLocaleString('th-TH'),
     });
 
-    return NextResponse.json({ success: true, contactLog });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Call log error:', error);
     return NextResponse.json({ error: 'Failed to record call log' }, { status: 500 });
