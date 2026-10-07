@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { comparePassword, createSession } from '@/lib/auth';
+import { getAdminsFromSheet } from '@/lib/googleSheetsDb';
 
 export async function POST(request: Request) {
   try {
@@ -10,11 +10,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'กรุณากรอกอีเมลและรหัสผ่าน' }, { status: 400 });
     }
 
-    const admin = await prisma.admin.findUnique({
-      where: { email },
-    });
+    // Authenticate from Google Sheets
+    const admins = await getAdminsFromSheet();
+    const admin = admins.find((a) => a.email.toLowerCase() === email.trim().toLowerCase());
 
-    if (!admin || !admin.isActive) {
+    if (!admin) {
       return NextResponse.json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }, { status: 401 });
     }
 
@@ -51,6 +51,6 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดภายในระบบ' }, { status: 500 });
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการเชื่อมต่อ Google Sheets' }, { status: 500 });
   }
 }
