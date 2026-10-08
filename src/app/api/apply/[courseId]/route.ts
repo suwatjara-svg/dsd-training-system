@@ -14,6 +14,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cou
     }
 
     const formData = await request.formData();
+    const titlePrefix = (formData.get('titlePrefix') as string) || '';
     const idCardNumber = formData.get('idCardNumber') as string;
     const firstName = formData.get('firstName') as string;
     const lastName = formData.get('lastName') as string;
@@ -46,6 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ cou
       id,
       applicationNumber: appNumber,
       courseId: course.id,
+      titlePrefix: titlePrefix.trim(),
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       idCardNumber: idCardNumber.trim(),

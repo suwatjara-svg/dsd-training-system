@@ -53,22 +53,32 @@ export async function getCoursesFromSheet() {
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'courses!A2:K',
+    range: 'courses!A2:M',
   });
   const rows = res.data.values || [];
-  return rows.map((r) => ({
-    id: r[0],
-    code: r[1],
-    title: r[2],
-    description: r[3] || '',
-    capacity: Number(r[4]) || 20,
-    startDate: r[5] || null,
-    endDate: r[6] || null,
-    timeSlot: r[7] || '',
-    location: r[8] || '',
-    qualifications: r[9] || '',
-    status: r[10] || 'OPEN',
-  }));
+  return rows.map((r) => {
+    let requiredDocs: string[] = ['สำเนาบัตรประชาชน', 'รูปถ่ายหน้าตรง 1-2 นิ้ว'];
+    if (r[12]) {
+      try {
+        requiredDocs = JSON.parse(r[12]);
+      } catch {}
+    }
+    return {
+      id: r[0],
+      code: r[1],
+      title: r[2],
+      description: r[3] || '',
+      capacity: Number(r[4]) || 20,
+      startDate: r[5] || null,
+      endDate: r[6] || null,
+      timeSlot: r[7] || '',
+      location: r[8] || '',
+      qualifications: r[9] || '',
+      status: r[10] || 'OPEN',
+      trainingDays: r[11] ? Number(r[11]) : null,
+      requiredDocs,
+    };
+  });
 }
 
 export async function addCourseToSheet(course: {
@@ -83,11 +93,14 @@ export async function addCourseToSheet(course: {
   location?: string;
   qualifications?: string;
   status: string;
+  trainingDays?: number | string | null;
+  requiredDocs?: string[];
 }) {
   const sheets = getSheetsClient();
+  const docsJson = JSON.stringify(course.requiredDocs || []);
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'courses!A:K',
+    range: 'courses!A:M',
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [[
@@ -102,6 +115,8 @@ export async function addCourseToSheet(course: {
         course.location || '',
         course.qualifications || '',
         course.status || 'OPEN',
+        course.trainingDays || '',
+        docsJson,
       ]],
     },
   });
@@ -114,25 +129,30 @@ export async function getApplicationsFromSheet(courseId?: string) {
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'applications!A2:M',
+    range: 'applications!A2:N',
   });
   const rows = res.data.values || [];
-  let apps = rows.map((r, index) => ({
-    rowIndex: index + 2,
-    id: r[0],
-    applicationNumber: r[1],
-    courseId: r[2],
-    firstName: r[3],
-    lastName: r[4],
-    idCardNumber: (r[5] || '').replace(/^'/, ''),
-    phoneNumber: (r[6] || '').replace(/^'/, ''),
-    age: Number(r[7]) || null,
-    educationLevel: r[8] || '',
-    occupation: r[9] || '',
-    qualificationStatus: r[10] || 'PENDING',
-    selectionStatus: r[11] || 'PENDING',
-    submittedAt: r[12] || '',
-  }));
+  let apps = rows.map((r, index) => {
+    // Check if row has titlePrefix at index 3 or old schema without it
+    const hasPrefix = ['นาย', 'นาง', 'นางสาว'].some(p => (r[3] || '').includes(p)) || rows[0]?.length === 14;
+    return {
+      rowIndex: index + 2,
+      id: r[0],
+      applicationNumber: r[1],
+      courseId: r[2],
+      titlePrefix: r[3] || '',
+      firstName: r[4] || r[3] || '',
+      lastName: r[5] || r[4] || '',
+      idCardNumber: (r[6] || r[5] || '').replace(/^'/, ''),
+      phoneNumber: (r[7] || r[6] || '').replace(/^'/, ''),
+      age: Number(r[8] || r[7]) || null,
+      educationLevel: r[9] || r[8] || '',
+      occupation: r[10] || r[9] || '',
+      qualificationStatus: r[11] || r[10] || 'PENDING',
+      selectionStatus: r[12] || r[11] || 'PENDING',
+      submittedAt: r[13] || r[12] || '',
+    };
+  });
 
   if (courseId) {
     apps = apps.filter((a) => a.courseId === courseId);
@@ -144,6 +164,7 @@ export async function addApplicationToSheet(app: {
   id: string;
   applicationNumber: string;
   courseId: string;
+  titlePrefix: string;
   firstName: string;
   lastName: string;
   idCardNumber: string;
@@ -158,13 +179,14 @@ export async function addApplicationToSheet(app: {
   const sheets = getSheetsClient();
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'applications!A:M',
+    range: 'applications!A:N',
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [[
         app.id,
         app.applicationNumber,
         app.courseId,
+        app.titlePrefix,
         app.firstName,
         app.lastName,
         `'${app.idCardNumber}`,
@@ -190,7 +212,7 @@ export async function updateApplicationStatusInSheet(
   if (!target) return;
 
   const sheets = getSheetsClient();
-  const col = field === 'qualificationStatus' ? 'K' : 'L';
+  const col = field === 'qualificationStatus' ? 'L' : 'M';
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
     range: `applications!${col}${target.rowIndex}`,

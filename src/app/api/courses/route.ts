@@ -20,7 +20,6 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const {
-      code,
       title,
       description,
       capacity,
@@ -28,17 +27,21 @@ export async function POST(request: Request) {
       timeSlot,
       startDate,
       endDate,
+      trainingDays,
       qualifications,
+      requiredDocs,
     } = body;
 
-    if (!code || !title || !capacity) {
-      return NextResponse.json({ error: 'กรุณากรอกรหัสหลักสูตร, ชื่อหลักสูตร และจำนวนที่รับ' }, { status: 400 });
+    if (!title || !capacity) {
+      return NextResponse.json({ error: 'กรุณากรอกชื่อหลักสูตร และจำนวนที่รับ' }, { status: 400 });
     }
 
     const id = `course_${Date.now()}`;
+    const autoCode = `DSD4-${Date.now().toString().slice(-4)}`;
+
     await addCourseToSheet({
       id,
-      code,
+      code: autoCode,
       title,
       description: description || '',
       capacity: Number(capacity) || 20,
@@ -46,11 +49,13 @@ export async function POST(request: Request) {
       timeSlot: timeSlot || '',
       startDate: startDate || null,
       endDate: endDate || null,
+      trainingDays: trainingDays ? Number(trainingDays) : null,
       qualifications: qualifications || '',
       status: 'OPEN',
+      requiredDocs: requiredDocs || [],
     });
 
-    return NextResponse.json({ id, code, title, capacity }, { status: 201 });
+    return NextResponse.json({ id, code: autoCode, title, capacity }, { status: 201 });
   } catch (error) {
     console.error('Create course error:', error);
     return NextResponse.json({ error: 'Failed to create course' }, { status: 500 });

@@ -105,10 +105,17 @@ export default async function PublicHomePage() {
                       </span>
                     </div>
 
-                    {course.startDate && (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-slate-400" />
-                        <span>เริ่มอบรม: {formatThaiDate(course.startDate)}</span>
+                    {(course.startDate || course.endDate) && (
+                      <div className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <span>
+                          ระยะเวลาอบรม:{' '}
+                          <strong className="text-slate-700 font-semibold">
+                            {course.startDate ? formatThaiDate(course.startDate) : '-'}
+                            {course.endDate && ` ถึง ${formatThaiDate(course.endDate)}`}
+                            {course.trainingDays ? ` (รวม ${course.trainingDays} วัน)` : ''}
+                          </strong>
+                        </span>
                       </div>
                     )}
 

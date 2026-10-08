@@ -42,11 +42,11 @@ export default async function PublicApplyPage({
 
   const courseWithDocs = {
     ...course,
-    requiredDocuments: [
-      { id: 'doc_1', title: 'สำเนาบัตรประชาชน (พร้อมเซ็นรับรองสำเนาถูกต้อง)', isRequired: true },
-      { id: 'doc_2', title: 'รูปถ่ายหน้าตรง 1-2 นิ้ว', isRequired: true },
-      { id: 'doc_3', title: 'สำเนาวุฒิการศึกษา', isRequired: false },
-    ],
+    requiredDocuments: (course.requiredDocs || []).map((title: string, index: number) => ({
+      id: `doc_${index}`,
+      title,
+      isRequired: false, // ไม่บังคับตามความต้องการ
+    })),
   };
 
   return (
@@ -86,12 +86,14 @@ export default async function PublicApplyPage({
               <strong className="text-slate-800 text-sm mt-0.5 block">{course.capacity} คน</strong>
             </div>
 
-            {course.startDate && (
-              <div>
-                <span className="text-slate-400 block font-medium">ระยะเวลาอบรม:</span>
-                <strong className="text-slate-800 text-sm mt-0.5 block">{formatThaiDate(course.startDate)}</strong>
-              </div>
-            )}
+            <div>
+              <span className="text-slate-400 block font-medium">ระยะเวลาอบรม:</span>
+              <strong className="text-slate-800 text-sm mt-0.5 block">
+                {course.startDate ? formatThaiDate(course.startDate) : '-'}
+                {course.endDate && ` ถึง ${formatThaiDate(course.endDate)}`}
+                {course.trainingDays ? ` (รวม ${course.trainingDays} วัน)` : ''}
+              </strong>
+            </div>
 
             {course.timeSlot && (
               <div>

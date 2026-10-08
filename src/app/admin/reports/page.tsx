@@ -28,10 +28,7 @@ export default async function ReportsPage() {
           <div key={c.id} className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 space-y-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                  {c.code}
-                </span>
-                <span className="text-xs text-slate-500">ผู้สมัคร: {c._count.applications} คน</span>
+                <span className="text-xs text-slate-500 font-medium">ผู้สมัคร: {c._count.applications} คน</span>
               </div>
               <h3 className="text-base font-bold text-slate-800 mt-1">{c.title}</h3>
             </div>

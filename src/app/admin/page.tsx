@@ -20,7 +20,7 @@ export default function AdminHomePage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Form states for new course (รหัสหลักสูตรเอาออกแล้วตามคำขอ)
+  // Form states for new course (ไม่เอารหัสหลักสูตรแล้ว)
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [capacity, setCapacity] = useState('20');
@@ -28,7 +28,16 @@ export default function AdminHomePage() {
   const [timeSlot, setTimeSlot] = useState('09:00 - 16:00 น.');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [trainingDays, setTrainingDays] = useState('5');
   const [qualifications, setQualifications] = useState('');
+
+  // Required docs checklist config
+  const [docIdCard, setDocIdCard] = useState(true);
+  const [docPhoto, setDocPhoto] = useState(true);
+  const [docEducation, setDocEducation] = useState(false);
+  const [docOther, setDocOther] = useState(false);
+  const [docOtherTitle, setDocOtherTitle] = useState('');
+
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -54,15 +63,18 @@ export default function AdminHomePage() {
     setActionLoading(true);
     setError('');
 
-    try {
-      // สุ่มหรือสร้าง Auto Code เพื่อความง่าย ไม่ต้องให้ผู้ใช้กรอก
-      const autoCode = `DSD4-${Date.now().toString().slice(-4)}`;
+    // Prepare list of docs based on checkboxes
+    const docs: string[] = [];
+    if (docIdCard) docs.push('สำเนาบัตรประชาชน');
+    if (docPhoto) docs.push('รูปถ่ายหน้าตรง 1-2 นิ้ว');
+    if (docEducation) docs.push('สำเนาวุฒิการศึกษา');
+    if (docOther && docOtherTitle.trim()) docs.push(docOtherTitle.trim());
 
+    try {
       const res = await fetch('/api/courses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: autoCode,
           title,
           description,
           capacity: Number(capacity),
@@ -70,7 +82,9 @@ export default function AdminHomePage() {
           timeSlot,
           startDate: startDate || null,
           endDate: endDate || null,
+          trainingDays: trainingDays ? Number(trainingDays) : null,
           qualifications,
+          requiredDocs: docs,
         }),
       });
 
@@ -196,15 +210,17 @@ export default function AdminHomePage() {
                   </div>
 
                   <div className="space-y-1.5 text-xs text-slate-500">
-                    {c.startDate && (
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>เริ่มอบรม: {formatThaiDate(c.startDate)}</span>
-                      </div>
-                    )}
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">ระยะเวลาอบรม:</span>
+                      <strong className="text-slate-700 font-semibold">
+                        {c.startDate ? formatThaiDate(c.startDate) : '-'}
+                        {c.endDate && ` ถึง ${formatThaiDate(c.endDate)}`}
+                        {c.trainingDays ? ` (${c.trainingDays} วัน)` : ''}
+                      </strong>
+                    </div>
                     {c.location && (
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                         <span className="truncate">{c.location}</span>
                       </div>
                     )}
@@ -335,6 +351,19 @@ export default function AdminHomePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    จำนวนวันที่เรียน (วัน)
+                  </label>
+                  <input
+                    type="number"
+                    value={trainingDays}
+                    onChange={(e) => setTrainingDays(e.target.value)}
+                    placeholder="เช่น 5"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     เวลาเรียน
                   </label>
                   <input
@@ -344,18 +373,18 @@ export default function AdminHomePage() {
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    สถานที่ฝึกอบรม
-                  </label>
-                  <input
-                    type="text"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  สถานที่ฝึกอบรม
+                </label>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                />
               </div>
 
               <div>
@@ -369,6 +398,64 @@ export default function AdminHomePage() {
                   placeholder="เช่น สัญชาติไทย อายุ 18 ปีขึ้นไป"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
                 />
+              </div>
+
+              {/* Required Documents Selector */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                <span className="text-xs font-bold text-slate-800 block">
+                  เลือกเอกสารที่ต้องการให้ผู้สมัครแนบ (ถ้าไม่เลือกจะไม่แสดง):
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-700">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={docIdCard}
+                      onChange={(e) => setDocIdCard(e.target.checked)}
+                      className="rounded text-sky-600 focus:ring-sky-500"
+                    />
+                    <span>สำเนาบัตรประชาชน</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={docPhoto}
+                      onChange={(e) => setDocPhoto(e.target.checked)}
+                      className="rounded text-sky-600 focus:ring-sky-500"
+                    />
+                    <span>รูปถ่ายหน้าตรง 1-2 นิ้ว</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={docEducation}
+                      onChange={(e) => setDocEducation(e.target.checked)}
+                      className="rounded text-sky-600 focus:ring-sky-500"
+                    />
+                    <span>สำเนาวุฒิการศึกษา</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={docOther}
+                      onChange={(e) => setDocOther(e.target.checked)}
+                      className="rounded text-sky-600 focus:ring-sky-500"
+                    />
+                    <span>เอกสารอื่นๆ</span>
+                  </label>
+                </div>
+
+                {docOther && (
+                  <input
+                    type="text"
+                    value={docOtherTitle}
+                    onChange={(e) => setDocOtherTitle(e.target.value)}
+                    placeholder="ระบุชื่อเอกสารอื่นๆ เช่น ใบรับรองแพทย์, ใบขับขี่"
+                    className="w-full mt-2 px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                  />
+                )}
               </div>
 
               <div className="flex items-center gap-2 pt-3">

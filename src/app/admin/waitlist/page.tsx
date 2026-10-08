@@ -92,7 +92,7 @@ export default function WaitlistManagementPage() {
           >
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
-                [{c.code}] {c.title}
+                {c.title}
               </option>
             ))}
           </select>

@@ -30,10 +30,7 @@ export default async function AdminCoursesPage() {
         {courses.map((c) => (
           <div key={c.id} className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                  {c.code}
-                </span>
+              <div className="flex items-center justify-end">
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                   {c.status}
                 </span>
