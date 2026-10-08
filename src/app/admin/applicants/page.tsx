@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Search,
   Filter,
@@ -15,6 +16,7 @@ import {
 import { maskIdCard, formatPhoneNumber, formatThaiDate } from '@/lib/utils';
 
 export default function ApplicantsListPage() {
+  const searchParams = useSearchParams();
   const [courses, setCourses] = useState<any[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [search, setSearch] = useState('');
@@ -31,10 +33,11 @@ export default function ApplicantsListPage() {
       .then((res) => {
         if (Array.isArray(res) && res.length > 0) {
           setCourses(res);
-          setSelectedCourseId(res[0].id);
+          const urlCourseId = searchParams.get('courseId');
+          setSelectedCourseId(urlCourseId || res[0].id);
         }
       });
-  }, []);
+  }, [searchParams]);
 
   const loadApplicants = async () => {
     if (!selectedCourseId) return;
@@ -52,9 +55,14 @@ export default function ApplicantsListPage() {
 
       const res = await fetch(`/api/applicants?${params.toString()}`);
       const json = await res.json();
-      setData(json);
+      if (res.ok && json.applicants) {
+        setData(json);
+      } else {
+        setData({ total: 0, page: 1, limit: 15, totalPages: 1, applicants: [] });
+      }
     } catch (e) {
       console.error(e);
+      setData({ total: 0, page: 1, limit: 15, totalPages: 1, applicants: [] });
     } finally {
       setLoading(false);
     }
@@ -193,7 +201,7 @@ export default function ApplicantsListPage() {
                         {app.applicationNumber}
                       </td>
                       <td className="py-3 px-4 font-semibold text-slate-800">
-                        {app.firstName} {app.lastName}
+                        {app.titlePrefix ? `${app.titlePrefix} ` : ''}{app.firstName} {app.lastName}
                       </td>
                       <td className="py-3 px-4 font-mono text-slate-600">
                         {maskIdCard(app.idCardNumber)}
