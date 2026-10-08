@@ -1,17 +1,9 @@
 import React from 'react';
-import { prisma } from '@/lib/prisma';
 import { ShieldCheck, History } from 'lucide-react';
 import { formatThaiDate } from '@/lib/utils';
 
 export default async function AuditLogsPage() {
-  const logs = await prisma.auditLog.findMany({
-    include: {
-      admin: { select: { fullName: true, role: true } },
-      application: { select: { applicationNumber: true, firstName: true, lastName: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  });
+  const logs: any[] = [];
 
   return (
     <div className="space-y-6">

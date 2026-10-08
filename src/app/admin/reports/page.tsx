@@ -1,15 +1,20 @@
 import React from 'react';
-import { prisma } from '@/lib/prisma';
+import { getCoursesFromSheet, getApplicationsFromSheet } from '@/lib/googleSheetsDb';
 import Link from 'next/link';
 import { FileSpreadsheet, Download, FileText } from 'lucide-react';
 
 export default async function ReportsPage() {
-  const courses = await prisma.course.findMany({
-    include: {
-      _count: { select: { applications: true } },
+  const [coursesRaw, apps] = await Promise.all([
+    getCoursesFromSheet(),
+    getApplicationsFromSheet(),
+  ]);
+
+  const courses = coursesRaw.map((c) => ({
+    ...c,
+    _count: {
+      applications: apps.filter((a) => a.courseId === c.id).length,
     },
-    orderBy: { createdAt: 'desc' },
-  });
+  }));
 
   return (
     <div className="space-y-6">

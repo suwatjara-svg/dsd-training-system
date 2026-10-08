@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getCoursesFromSheet, getApplicationsFromSheet, getContactsFromSheet } from '@/lib/googleSheetsDb';
 import { getCurrentUser } from '@/lib/auth';
 import { formatThaiDate } from '@/lib/utils';
 import * as XLSX from 'xlsx';
@@ -19,54 +19,45 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'courseId is required' }, { status: 400 });
     }
 
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
-    });
+    const [courses, allApps, allContacts] = await Promise.all([
+      getCoursesFromSheet(),
+      getApplicationsFromSheet(courseId),
+      getContactsFromSheet(),
+    ]);
 
+    const course = courses.find((c) => c.id === courseId);
     if (!course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
-    const where: any = { courseId };
-    if (type === 'QUALIFIED') {
-      where.screening = { qualificationStatus: 'QUALIFIED' };
-    } else if (type === 'SELECTED') {
-      where.selection = { selectionStatus: 'SELECTED' };
-    } else if (type === 'WAITLIST') {
-      where.selection = { selectionStatus: 'WAITLIST' };
-    } else if (type === 'UNCONTACTED') {
-      where.contacts = { none: { contactStatus: 'CONTACTED' } };
-    }
-
-    const applicants = await prisma.application.findMany({
-      where,
-      orderBy: { submittedAt: 'asc' },
-      include: {
-        screening: true,
-        selection: true,
-        contacts: {
-          orderBy: { contactDate: 'desc' },
-          take: 1,
-        },
-      },
+    const applicants = allApps.filter((app) => {
+      if (type === 'QUALIFIED') return app.qualificationStatus === 'QUALIFIED';
+      if (type === 'SELECTED') return app.selectionStatus === 'SELECTED';
+      if (type === 'WAITLIST') return app.selectionStatus === 'WAITLIST';
+      if (type === 'UNCONTACTED') {
+        const contact = allContacts.find((c) => c.applicationId === app.id);
+        return !contact || contact.contactStatus !== 'CONTACTED';
+      }
+      return true;
     });
 
     // Prepare rows for Excel
     const rows = applicants.map((app, index) => {
-      const lastCall = app.contacts[0];
+      const lastCall = allContacts.find((c) => c.applicationId === app.id);
+      const prefix = (app as any).titlePrefix || '';
       return {
         'ลำดับ': index + 1,
         'เลขที่ใบสมัคร': app.applicationNumber,
-        'ชื่อ-นามสกุล': `${app.firstName} ${app.lastName}`,
+        'ชื่อ-นามสกุล': `${prefix}${app.firstName} ${app.lastName}`.trim(),
         'เลขบัตรประชาชน': app.idCardNumber,
         'เบอร์โทรศัพท์': app.phoneNumber,
         'อายุ': app.age || '-',
         'อาชีพ': app.occupation || '-',
         'การศึกษา': app.educationLevel || '-',
-        'สถานะคุณสมบัติ': app.screening?.qualificationStatus === 'QUALIFIED' ? 'ผ่าน' : app.screening?.qualificationStatus === 'NOT_QUALIFIED' ? 'ไม่ผ่าน' : 'รอตรวจ',
+        'สถานะคุณสมบัติ': app.qualificationStatus === 'QUALIFIED' ? 'ผ่าน' : app.qualificationStatus === 'NOT_QUALIFIED' ? 'ไม่ผ่าน' : 'รอตรวจ',
         'สถานะการติดต่อ': lastCall?.contactStatus === 'CONTACTED' ? 'ติดต่อแล้ว' : lastCall?.contactStatus === 'NO_ANSWER' ? 'ไม่รับสาย' : 'ยังไม่โทร',
         'ความประสงค์เรียน': lastCall?.interestStatus === 'INTERESTED' ? 'ต้องการเรียน' : lastCall?.interestStatus === 'NOT_INTERESTED' ? 'ไม่ต้องการ' : 'ยังไม่แน่ใจ',
-        'ผลการคัดเลือก': app.selection?.selectionStatus === 'SELECTED' ? 'คัดเลือกแล้ว' : app.selection?.selectionStatus === 'WAITLIST' ? `สำรอง (ลำดับ ${app.selection.waitlistOrder})` : app.selection?.selectionStatus === 'REJECTED' ? 'ไม่ผ่าน' : 'รอดำเนินการ',
+        'ผลการคัดเลือก': app.selectionStatus === 'SELECTED' ? 'คัดเลือกแล้ว' : app.selectionStatus === 'WAITLIST' ? 'สำรอง' : app.selectionStatus === 'REJECTED' ? 'ไม่ผ่าน' : 'รอดำเนินการ',
         'วันที่สมัคร': formatThaiDate(app.submittedAt, true),
       };
     });

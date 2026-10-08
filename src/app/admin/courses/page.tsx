@@ -1,19 +1,22 @@
 import React from 'react';
-import { prisma } from '@/lib/prisma';
+import { getCoursesFromSheet, getApplicationsFromSheet } from '@/lib/googleSheetsDb';
 import Link from 'next/link';
 import { PlusCircle, GraduationCap, Users, Calendar, MapPin, CheckCircle } from 'lucide-react';
 import { formatThaiDate } from '@/lib/utils';
 
 export default async function AdminCoursesPage() {
-  const courses = await prisma.course.findMany({
-    include: {
-      _count: {
-        select: { applications: true },
-      },
-      forms: true,
+  const [coursesRaw, apps] = await Promise.all([
+    getCoursesFromSheet(),
+    getApplicationsFromSheet(),
+  ]);
+
+  const courses = coursesRaw.map((c) => ({
+    ...c,
+    _count: {
+      applications: apps.filter((a) => a.courseId === c.id).length,
     },
-    orderBy: { createdAt: 'desc' },
-  });
+    responsiblePerson: '',
+  }));
 
   return (
     <div className="space-y-6">
