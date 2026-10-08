@@ -36,6 +36,7 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
   const [answers, setAnswers] = useState<Record<string, any>>({});
   // Uploaded files map: { [docTitle]: File }
   const [files, setFiles] = useState<Record<string, File>>({});
+  const [fileError, setFileError] = useState<string>('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -52,9 +53,35 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
   };
 
   const handleFileChange = (docTitle: string, file: File | null) => {
-    if (file) {
-      setFiles((prev) => ({ ...prev, [docTitle]: file }));
+    setFileError('');
+    if (!file) {
+      setFiles((prev) => {
+        const next = { ...prev };
+        delete next[docTitle];
+        return next;
+      });
+      return;
     }
+
+    // Check maximum file size (10 MB)
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      setFileError(`ไฟล์ "${file.name}" มีขนาดเกิน 10 MB กรุณาเลือกไฟล์ใหม่ที่มีขนาดไม่เกิน 10 MB`);
+      return;
+    }
+
+    // Check supported file extension or MIME type
+    const isAllowed =
+      file.type.startsWith('image/') ||
+      file.type === 'application/pdf' ||
+      /\.(jpe?g|png|webp|heic|heif|pdf)$/i.test(file.name);
+
+    if (!isAllowed) {
+      setFileError(`ไฟล์ "${file.name}" ไม่ใช่ประเภทที่รองรับ กรุณาแนบไฟล์รูปภาพ (JPG, PNG) หรือไฟล์เอกสาร PDF เท่านั้น`);
+      return;
+    }
+
+    setFiles((prev) => ({ ...prev, [docTitle]: file }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -477,19 +504,65 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
             </span>
           </div>
 
+          {/* Guide banner explaining allowed file types and sizes */}
+          <div className="p-3.5 sm:p-4 rounded-xl bg-purple-50/80 border border-purple-200 text-purple-950 text-xs sm:text-sm space-y-1.5">
+            <div className="flex items-center gap-2 font-bold text-purple-900">
+              <span className="text-base">📄</span>
+              <span>ประเภทไฟล์ที่สามารถแนบได้:</span>
+            </div>
+            <ul className="list-disc list-inside space-y-1 text-purple-900/90 pl-1 leading-relaxed">
+              <li>
+                <strong>ประเภทไฟล์ที่รองรับ:</strong> ไฟล์รูปภาพ (<strong>JPG, JPEG, PNG</strong>) หรือไฟล์เอกสาร (<strong>PDF</strong>)
+              </li>
+              <li>
+                <strong>ขนาดไฟล์:</strong> ไม่เกิน <strong>10 MB</strong> ต่อไฟล์
+              </li>
+              <li>
+                <strong>บนโทรศัพท์มือถือ:</strong> สามารถกดเลือกไฟล์แล้วใช้กล้องถ่ายรูปเอกสาร หรือเลือกรูปภาพจากเครื่องได้โดยตรง
+              </li>
+            </ul>
+          </div>
+
+          {fileError && (
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{fileError}</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {course.requiredDocuments.map((doc: any) => (
-              <div key={doc.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
-                <span className="text-sm font-bold text-slate-800 block">
-                  {doc.title}
-                </span>
-                <input
-                  type="file"
-                  onChange={(e) => handleFileChange(doc.title, e.target.files?.[0] || null)}
-                  className="block w-full text-xs sm:text-sm text-slate-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-100 file:text-purple-800 hover:file:bg-purple-200 cursor-pointer"
-                />
-              </div>
-            ))}
+            {course.requiredDocuments.map((doc: any) => {
+              const selectedFile = files[doc.title];
+              return (
+                <div key={doc.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-800 block">
+                      {doc.title}
+                    </span>
+                    {selectedFile && (
+                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        ✓ แนบไฟล์แล้ว
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={(e) => handleFileChange(doc.title, e.target.files?.[0] || null)}
+                    className="block w-full text-xs sm:text-sm text-slate-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-100 file:text-purple-800 hover:file:bg-purple-200 cursor-pointer"
+                  />
+                  {selectedFile ? (
+                    <div className="text-[11px] sm:text-xs text-slate-600 truncate bg-white p-2 rounded-lg border border-slate-200">
+                      📎 <strong>{selectedFile.name}</strong> ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 block">
+                      รองรับ JPG, PNG, PDF (ไม่เกิน 10MB)
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

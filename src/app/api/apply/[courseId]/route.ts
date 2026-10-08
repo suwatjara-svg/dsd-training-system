@@ -60,22 +60,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ cou
       submittedAt: new Date().toLocaleString('th-TH'),
     });
 
-    // 4. Handle Documents Upload to Google Drive
+    // 4. Handle Documents Upload to Google Drive (Safe async)
     const files = formData.getAll('documents') as File[];
     const docTitles = formData.getAll('docTitles') as string[];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file && file.size > 0) {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        await uploadApplicationFile({
-          courseCode: course.code,
-          applicationNumber: appNumber,
-          documentTitle: docTitles[i] || 'เอกสารแนบ',
-          fileName: file.name,
-          mimeType: file.type,
-          buffer,
-        });
+        try {
+          const buffer = Buffer.from(await file.arrayBuffer());
+          await uploadApplicationFile({
+            courseCode: course.code,
+            applicationNumber: appNumber,
+            documentTitle: docTitles[i] || 'เอกสารแนบ',
+            fileName: file.name,
+            mimeType: file.type,
+            buffer,
+          });
+        } catch (uploadErr) {
+          console.error(`Document upload error for ${file.name}:`, uploadErr);
+        }
       }
     }
 
