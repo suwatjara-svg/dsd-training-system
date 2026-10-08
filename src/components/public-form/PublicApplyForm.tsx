@@ -157,23 +157,26 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <span>{error}</span>
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm font-semibold flex items-start gap-2.5 shadow-sm">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-600 mt-0.5" />
+          <span className="leading-relaxed">{error}</span>
         </div>
       )}
 
       {/* Part 1: Personal Info */}
-      <div className="bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm space-y-5">
-        <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-2">
-          <span>ส่วนที่ 1: ข้อมูลส่วนตัวของผู้สมัคร</span>
-        </h3>
+      <div className="bg-white rounded-2xl p-5 sm:p-7 md:p-8 border border-slate-200/90 shadow-sm space-y-5">
+        <div className="border-b border-slate-100 pb-3 flex items-center gap-2.5">
+          <div className="w-2 h-6 bg-purple-700 rounded-full" />
+          <h3 className="text-base sm:text-lg font-bold text-slate-800">
+            ส่วนที่ 1: ข้อมูลส่วนตัวของผู้สมัคร
+          </h3>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               เลขประจำตัวประชาชน (13 หลัก) <span className="text-rose-500">*</span>
             </label>
             <input
@@ -181,122 +184,142 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
               name="idCardNumber"
               required
               maxLength={13}
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={formData.idCardNumber}
               onChange={handleInputChange}
               placeholder="1100400123456"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               เบอร์โทรศัพท์ที่ติดต่อได้สะดวก <span className="text-rose-500">*</span>
             </label>
             <input
               type="tel"
               name="phoneNumber"
               required
+              inputMode="tel"
+              autoComplete="tel"
               value={formData.phoneNumber}
               onChange={handleInputChange}
               placeholder="0812345678"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs"
             />
           </div>
 
-          {/* Title Prefix Selector */}
+          {/* Title Prefix Selector - Touch-friendly card buttons */}
           <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
               คำนำหน้าชื่อ <span className="text-rose-500">*</span>
             </label>
-            <div className="flex flex-wrap items-center gap-3">
-              {['นาย', 'นาง', 'นางสาว', 'อื่นๆ'].map((p) => (
-                <label key={p} className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="titlePrefix"
-                    value={p}
-                    checked={formData.titlePrefix === p}
-                    onChange={handleInputChange}
-                    className="text-sky-600 focus:ring-sky-500"
-                  />
-                  <span>{p}</span>
-                </label>
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+              {['นาย', 'นาง', 'นางสาว', 'อื่นๆ'].map((p) => {
+                const isSelected = formData.titlePrefix === p;
+                return (
+                  <label
+                    key={p}
+                    className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl border text-sm font-semibold cursor-pointer transition select-none active:scale-[0.98] ${
+                      isSelected
+                        ? 'bg-purple-50 border-purple-600 text-purple-900 ring-2 ring-purple-500/20 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="titlePrefix"
+                      value={p}
+                      checked={isSelected}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-purple-600 focus:ring-purple-500 accent-purple-600"
+                    />
+                    <span>{p}</span>
+                  </label>
+                );
+              })}
+            </div>
 
-              {formData.titlePrefix === 'อื่นๆ' && (
+            {formData.titlePrefix === 'อื่นๆ' && (
+              <div className="mt-3">
                 <input
                   type="text"
                   name="customPrefix"
                   required
                   value={formData.customPrefix}
                   onChange={handleInputChange}
-                  placeholder="ระบุคำนำหน้า เช่น ดร. / ว่าที่ร้อยตรี"
-                  className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                  placeholder="ระบุคำนำหน้าชื่อ เช่น ดร. / ว่าที่ร้อยตรี"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs"
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               ชื่อ <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               name="firstName"
               required
+              autoComplete="given-name"
               value={formData.firstName}
               onChange={handleInputChange}
               placeholder="สมชาย"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               นามสกุล <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               name="lastName"
               required
+              autoComplete="family-name"
               value={formData.lastName}
               onChange={handleInputChange}
               placeholder="ใจดี"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               อายุ (ปี)
             </label>
             <input
               type="number"
               name="age"
+              inputMode="numeric"
               value={formData.age}
               onChange={handleInputChange}
               placeholder="25"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              อีเมล (Email) <span className="text-slate-400 font-normal">(ไม่บังคับใส่)</span>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+              อีเมล (Email) <span className="text-slate-400 font-normal text-xs">(ไม่บังคับใส่)</span>
             </label>
             <input
               type="email"
               name="email"
+              autoComplete="email"
               value={formData.email}
               onChange={handleInputChange}
               placeholder="applicant@example.com (ไม่บังคับใส่)"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               อาชีพปัจจุบัน
             </label>
             <input
@@ -305,19 +328,19 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
               value={formData.occupation}
               onChange={handleInputChange}
               placeholder="เช่น รับจ้าง, ค้าขาย, พนักงานบริษัท"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               ระดับการศึกษาสูงสุด
             </label>
             <select
               name="educationLevel"
               value={formData.educationLevel}
               onChange={handleInputChange}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs bg-white"
             >
               <option value="ไม่ได้เรียน">ไม่ได้เรียน</option>
               <option value="ประถมศึกษาปีที่ 4">ประถมศึกษาปีที่ 4</option>
@@ -332,7 +355,7 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
               ที่อยู่ปัจจุบัน
             </label>
             <textarea
@@ -341,7 +364,7 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
               value={formData.address}
               onChange={handleInputChange}
               placeholder="ที่อยู่ตามบัตรประชาชน หรือที่พักอาศัยปัจจุบัน"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs resize-y"
             />
           </div>
         </div>
@@ -349,12 +372,15 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
 
       {/* Part 2: Dynamic Questions from Form Builder */}
       {form && form.sections && form.sections.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm space-y-6">
+        <div className="bg-white rounded-2xl p-5 sm:p-7 md:p-8 border border-slate-200/90 shadow-sm space-y-6">
           {form.sections.map((section: any) => (
             <div key={section.id} className="space-y-4">
-              <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2">
-                {section.title}
-              </h3>
+              <div className="border-b border-slate-100 pb-3 flex items-center gap-2.5">
+                <div className="w-2 h-6 bg-purple-700 rounded-full" />
+                <h3 className="text-base sm:text-lg font-bold text-slate-800">
+                  {section.title}
+                </h3>
+              </div>
               <div className="space-y-4">
                 {section.questions.map((q: any) => {
                   let options: string[] = [];
@@ -366,21 +392,28 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
 
                   return (
                     <div key={q.id}>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                         {q.label} {q.isRequired && <span className="text-rose-500">*</span>}
                       </label>
 
                       {q.questionType === 'RADIO' ? (
                         <div className="space-y-2 pt-1">
                           {options.map((opt, i) => (
-                            <label key={i} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                            <label
+                              key={i}
+                              className={`flex items-center gap-3 p-3 rounded-xl border text-sm cursor-pointer transition select-none ${
+                                answers[q.id] === opt
+                                  ? 'bg-purple-50 border-purple-600 text-purple-950 font-semibold ring-1 ring-purple-500/20'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                              }`}
+                            >
                               <input
                                 type="radio"
                                 name={`q_${q.id}`}
                                 required={q.isRequired}
                                 checked={answers[q.id] === opt}
                                 onChange={() => handleDynamicChange(q.id, opt)}
-                                className="text-sky-600 focus:ring-sky-500"
+                                className="w-4 h-4 text-purple-600 focus:ring-purple-500 accent-purple-600"
                               />
                               <span>{opt}</span>
                             </label>
@@ -391,7 +424,7 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
                           required={q.isRequired}
                           value={answers[q.id] || ''}
                           onChange={(e) => handleDynamicChange(q.id, e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs bg-white"
                         >
                           <option value="">-- กรุณาเลือก --</option>
                           {options.map((opt, i) => (
@@ -406,7 +439,7 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
                           required={q.isRequired}
                           value={answers[q.id] || ''}
                           onChange={(e) => handleDynamicChange(q.id, e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs resize-y"
                         />
                       ) : (
                         <input
@@ -414,7 +447,7 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
                           required={q.isRequired}
                           value={answers[q.id] || ''}
                           onChange={(e) => handleDynamicChange(q.id, e.target.value)}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition shadow-xs"
                         />
                       )}
                     </div>
@@ -428,25 +461,32 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
 
       {/* Part 3: Documents Upload (Optional - ไม่บังคับใส่) */}
       {course.requiredDocuments && course.requiredDocuments.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Upload className="w-4 h-4 text-sky-600" />
-              <span>ส่วนที่ 3: แนบเอกสารประกอบการสมัคร</span>
+        <div className="bg-white rounded-2xl p-5 sm:p-7 md:p-8 border border-slate-200/90 shadow-sm space-y-4">
+          <div className="border-b border-slate-100 pb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-2 h-6 bg-purple-700 rounded-full" />
+              <div className="flex items-center gap-2">
+                <Upload className="w-4 h-4 text-purple-700" />
+                <h3 className="text-base sm:text-lg font-bold text-slate-800">
+                  ส่วนที่ 3: แนบเอกสารประกอบการสมัคร
+                </h3>
+              </div>
             </div>
-            <span className="text-xs font-normal text-slate-400">(ไม่บังคับแนบ)</span>
-          </h3>
+            <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full flex-shrink-0">
+              ไม่บังคับแนบ
+            </span>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {course.requiredDocuments.map((doc: any) => (
-              <div key={doc.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                <span className="text-xs font-bold text-slate-800 block">
+              <div key={doc.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
+                <span className="text-sm font-bold text-slate-800 block">
                   {doc.title}
                 </span>
                 <input
                   type="file"
                   onChange={(e) => handleFileChange(doc.title, e.target.files?.[0] || null)}
-                  className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer"
+                  className="block w-full text-xs sm:text-sm text-slate-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-100 file:text-purple-800 hover:file:bg-purple-200 cursor-pointer"
                 />
               </div>
             ))}
@@ -455,37 +495,37 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
       )}
 
       {/* Part 4: PDPA & Submission */}
-      <div className="bg-white rounded-2xl p-6 md:p-8 border border-slate-200/90 shadow-sm space-y-4">
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-2">
-          <div className="flex items-center gap-2 text-slate-800 font-bold">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+      <div className="bg-white rounded-2xl p-5 sm:p-7 md:p-8 border border-slate-200/90 shadow-sm space-y-5">
+        <div className="bg-slate-50 p-4 sm:p-5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-600 space-y-3">
+          <div className="flex items-center gap-2 text-slate-800 font-bold text-sm sm:text-base">
+            <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
             <span>การคุ้มครองข้อมูลส่วนบุคคล (PDPA Notice & Consent)</span>
           </div>
-          <p className="leading-relaxed">
+          <p className="leading-relaxed text-slate-600 text-xs sm:text-sm">
             ข้าพเจ้ายินยอมให้หน่วยงานจัดเก็บ รวบรวม และประมวลผลข้อมูลส่วนบุคคลข้างต้น เพื่อประโยชน์ในการคัดเลือก ติดต่อประสานงาน และบริหารจัดการการฝึกอบรมตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562
           </p>
-          <label className="flex items-center gap-2 pt-2 cursor-pointer font-bold text-slate-800">
+          <label className="flex items-start sm:items-center gap-3 pt-2 cursor-pointer font-bold text-slate-800 select-none">
             <input
               type="checkbox"
               name="pdpaConsent"
               checked={formData.pdpaConsent}
               onChange={handleInputChange}
-              className="w-4 h-4 text-sky-600 rounded focus:ring-sky-500"
+              className="w-5 h-5 mt-0.5 sm:mt-0 text-purple-600 rounded focus:ring-purple-500 accent-purple-600 flex-shrink-0 cursor-pointer"
             />
-            <span>ข้าพเจ้าได้อ่าน เข้าใจ และยินยอมตามเงื่อนไขข้างต้น</span>
+            <span className="text-xs sm:text-sm leading-normal">ข้าพเจ้าได้อ่าน เข้าใจ และยินยอมตามเงื่อนไขข้างต้น</span>
           </label>
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3.5 px-6 rounded-xl font-extrabold text-sm text-white bg-sky-600 hover:bg-sky-700 shadow-md hover:shadow-lg active:scale-[0.99] transition disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-3.5 sm:py-4 px-6 rounded-xl font-extrabold text-sm sm:text-base text-white bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 shadow-md hover:shadow-lg active:scale-[0.99] transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
         >
           {loading ? (
             <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
           ) : (
             <>
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>ยืนยันการสมัครเข้ารับการฝึกอบรม (Submit Application)</span>
             </>
           )}
