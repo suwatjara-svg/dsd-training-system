@@ -126,9 +126,9 @@ export default async function PublicHomePage() {
                     )}
 
                     {course.location && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-slate-400" />
-                        <span className="truncate">{course.location}</span>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <span className="break-words leading-snug">{course.location}</span>
                       </div>
                     )}
                   </div>

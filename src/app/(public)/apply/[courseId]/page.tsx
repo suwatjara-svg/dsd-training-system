@@ -105,7 +105,7 @@ export default async function PublicApplyPage({
             {course.location && (
               <div>
                 <span className="text-slate-400 block font-medium">สถานที่:</span>
-                <strong className="text-slate-800 text-sm mt-0.5 block truncate">{course.location}</strong>
+                <strong className="text-slate-800 text-sm mt-0.5 block break-words leading-snug">{course.location}</strong>
               </div>
             )}
           </div>

@@ -284,9 +284,9 @@ export default function AdminHomePage() {
                       </strong>
                     </div>
                     {c.location && (
-                      <div className="flex items-center gap-1.5 pt-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                        <span className="truncate">{c.location}</span>
+                      <div className="flex items-start gap-1.5 pt-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <span className="break-words leading-snug">{c.location}</span>
                       </div>
                     )}
                   </div>
