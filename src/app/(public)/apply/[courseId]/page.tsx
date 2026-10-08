@@ -61,8 +61,8 @@ export default async function PublicApplyPage({
             <ArrowLeft className="w-4 h-4" />
             <span>กลับหน้ารายการหลักสูตร</span>
           </Link>
-          <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-            เปิดรับสมัคร
+          <span className={`text-xs font-bold px-2 py-0.5 rounded border ${course.status === 'OPEN' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
+            {course.status === 'OPEN' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
           </span>
         </div>
       </header>
@@ -70,8 +70,8 @@ export default async function PublicApplyPage({
       {/* Main Course Info Header */}
       <div className="max-w-4xl mx-auto px-4 pt-8">
         <div className="bg-white rounded-2xl p-6 md:p-8 border border-slate-200/80 shadow-sm space-y-4">
-          <span className="text-xs font-bold px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-            เปิดรับสมัคร
+          <span className={`text-xs font-bold px-2.5 py-1 rounded border inline-block ${course.status === 'OPEN' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
+            {course.status === 'OPEN' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
           </span>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 leading-tight">
             {course.title}
@@ -120,7 +120,19 @@ export default async function PublicApplyPage({
 
         {/* Dynamic Apply Form Component */}
         <div className="mt-8">
-          <PublicApplyForm course={courseWithDocs} form={activeForm} />
+          {course.status === 'CLOSED' ? (
+            <div className="bg-white rounded-2xl p-8 border border-rose-200 text-center shadow-sm space-y-3">
+              <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
+                ✕
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">ปิดรับสมัครแล้ว</h2>
+              <p className="text-xs text-slate-500">
+                หลักสูตรนี้ปิดรับสมัครเรียบร้อยแล้ว หากมีข้อสงสัยกรุณาติดต่อ สถาบันพัฒนาฝีมือแรงงาน 4 ราชบุรี
+              </p>
+            </div>
+          ) : (
+            <PublicApplyForm course={courseWithDocs} form={activeForm} />
+          )}
         </div>
       </div>
     </div>

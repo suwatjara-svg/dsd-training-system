@@ -57,7 +57,7 @@ export async function getCoursesFromSheet() {
   });
   const rows = res.data.values || [];
   return rows.map((r) => {
-    let requiredDocs: string[] = ['สำเนาบัตรประชาชน', 'รูปถ่ายหน้าตรง 1-2 นิ้ว'];
+    let requiredDocs: string[] = ['เอกสารแนบ 1', 'เอกสารแนบ 2'];
     if (r[12]) {
       try {
         requiredDocs = JSON.parse(r[12]);
@@ -120,6 +120,56 @@ export async function addCourseToSheet(course: {
       ]],
     },
   });
+}
+
+export async function updateCourseStatusInSheet(courseId: string, status: string) {
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: 'courses!A2:K',
+  });
+  const rows = res.data.values || [];
+  const rowIndex = rows.findIndex((r) => r[0] === courseId);
+  if (rowIndex === -1) return false;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `courses!K${rowIndex + 2}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[status]],
+    },
+  });
+  return true;
+}
+
+export async function deleteCourseFromSheet(courseId: string) {
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: 'courses!A2:M',
+  });
+  const rows = res.data.values || [];
+  const remainingRows = rows.filter((r) => r[0] !== courseId);
+
+  // Clear existing course rows
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: SPREADSHEET_ID,
+    range: 'courses!A2:M',
+  });
+
+  // Write back remaining rows
+  if (remainingRows.length > 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `courses!A2:M${remainingRows.length + 1}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: remainingRows,
+      },
+    });
+  }
+  return true;
 }
 
 // -------------------------------------------------------------

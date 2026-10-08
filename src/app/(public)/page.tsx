@@ -83,8 +83,14 @@ export default async function PublicHomePage() {
               >
                 <div className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      เปิดรับสมัคร
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
+                        course.status === 'OPEN'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}
+                    >
+                      {course.status === 'OPEN' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
                     </span>
                   </div>
 
@@ -129,13 +135,19 @@ export default async function PublicHomePage() {
                 </div>
 
                 <div className="p-4 bg-slate-50 border-t border-slate-100">
-                  <Link
-                    href={`/apply/${course.id}`}
-                    className="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition"
-                  >
-                    <span>สมัครเข้ารับการฝึกอบรม</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                  {course.status === 'OPEN' ? (
+                    <Link
+                      href={`/apply/${course.id}`}
+                      className="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition"
+                    >
+                      <span>สมัครเข้ารับการฝึกอบรม</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  ) : (
+                    <div className="w-full py-2.5 px-4 rounded-xl bg-slate-200 text-slate-500 font-bold text-xs text-center">
+                      ปิดรับสมัครแล้ว
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

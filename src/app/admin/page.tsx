@@ -12,6 +12,8 @@ import {
   MapPin,
   Layers,
   ArrowRight,
+  Trash2,
+  Power,
 } from 'lucide-react';
 import { formatThaiDate } from '@/lib/utils';
 
@@ -58,6 +60,38 @@ export default function AdminHomePage() {
     loadCourses();
   }, []);
 
+  const handleToggleStatus = async (courseId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'OPEN' ? 'CLOSED' : 'OPEN';
+    try {
+      const res = await fetch('/api/courses', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId, status: newStatus }),
+      });
+      if (res.ok) {
+        loadCourses();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteCourse = async (courseId: string, courseTitle: string) => {
+    if (!window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบหลักสูตร "${courseTitle}" ?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/courses?courseId=${courseId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        loadCourses();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionLoading(true);
@@ -65,8 +99,8 @@ export default function AdminHomePage() {
 
     // Prepare list of docs based on checkboxes
     const docs: string[] = [];
-    if (docIdCard) docs.push('สำเนาบัตรประชาชน');
-    if (docPhoto) docs.push('รูปถ่ายหน้าตรง 1-2 นิ้ว');
+    if (docIdCard) docs.push('เอกสารแนบ 1');
+    if (docPhoto) docs.push('เอกสารแนบ 2');
     if (docEducation) docs.push('สำเนาวุฒิการศึกษา');
     if (docOther && docOtherTitle.trim()) docs.push(docOtherTitle.trim());
 
@@ -183,9 +217,38 @@ export default function AdminHomePage() {
               >
                 <div className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      {c.status}
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
+                        c.status === 'OPEN'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      }`}
+                    >
+                      {c.status === 'OPEN' ? '🟢 เปิดรับสมัคร' : '🔴 ปิดรับสมัคร'}
                     </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleToggleStatus(c.id, c.status)}
+                        title={c.status === 'OPEN' ? 'คลิกเพื่อปิดรับสมัคร' : 'คลิกเพื่อเปิดรับสมัคร'}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-sm ${
+                          c.status === 'OPEN'
+                            ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200'
+                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
+                        }`}
+                      >
+                        <Power className="w-3 h-3" />
+                        <span>{c.status === 'OPEN' ? 'ปิดรับสมัคร' : 'เปิดรับสมัคร'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteCourse(c.id, c.title)}
+                        title="ลบหลักสูตรนี้"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition border border-transparent hover:border-rose-200"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   <div>
@@ -203,9 +266,11 @@ export default function AdminHomePage() {
                       <span className="text-slate-400 block font-medium text-[11px]">จำนวนที่รับ</span>
                       <strong className="text-slate-800 text-sm mt-0.5 block">{c.capacity} คน</strong>
                     </div>
-                    <div className="bg-sky-50 p-2.5 rounded-xl border border-sky-100">
-                      <span className="text-sky-600 block font-medium text-[11px]">สถานะ</span>
-                      <strong className="text-sky-900 text-sm mt-0.5 block">เปิดรับสมัคร</strong>
+                    <div className={`p-2.5 rounded-xl border ${c.status === 'OPEN' ? 'bg-sky-50 border-sky-100' : 'bg-slate-100 border-slate-200'}`}>
+                      <span className={`block font-medium text-[11px] ${c.status === 'OPEN' ? 'text-sky-600' : 'text-slate-500'}`}>สถานะ</span>
+                      <strong className={`text-sm mt-0.5 block ${c.status === 'OPEN' ? 'text-sky-900' : 'text-slate-700'}`}>
+                        {c.status === 'OPEN' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
+                      </strong>
                     </div>
                   </div>
 
@@ -413,7 +478,7 @@ export default function AdminHomePage() {
                       onChange={(e) => setDocIdCard(e.target.checked)}
                       className="rounded text-sky-600 focus:ring-sky-500"
                     />
-                    <span>สำเนาบัตรประชาชน</span>
+                    <span>เอกสารแนบ 1</span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -423,7 +488,7 @@ export default function AdminHomePage() {
                       onChange={(e) => setDocPhoto(e.target.checked)}
                       className="rounded text-sky-600 focus:ring-sky-500"
                     />
-                    <span>รูปถ่ายหน้าตรง 1-2 นิ้ว</span>
+                    <span>เอกสารแนบ 2</span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer">
