@@ -283,14 +283,14 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              อีเมล (Email)
+              อีเมล (Email) <span className="text-slate-400 font-normal">(ไม่บังคับใส่)</span>
             </label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              placeholder="applicant@example.com"
+              placeholder="applicant@example.com (ไม่บังคับใส่)"
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
             />
           </div>

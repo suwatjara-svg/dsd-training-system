@@ -108,14 +108,6 @@ export default function LoginPage() {
             )}
           </button>
         </form>
-
-        <div className="mt-8 pt-6 border-t border-slate-100 text-xs text-slate-400 text-center">
-          <p className="font-medium text-slate-500">บัญชีทดสอบในระบบ (Initial Seed):</p>
-          <div className="mt-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-left font-mono text-[11px] text-slate-600 space-y-1">
-            <p>Admin: admin@gov.th / AdminPassword2026!</p>
-            <p>Officer: officer@gov.th / AdminPassword2026!</p>
-          </div>
-        </div>
       </div>
     </div>
   );
