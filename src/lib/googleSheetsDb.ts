@@ -56,7 +56,7 @@ export async function getCoursesFromSheet() {
     range: 'courses!A2:M',
   });
   const rows = res.data.values || [];
-  return rows.map((r) => {
+  const courses = rows.map((r) => {
     let requiredDocs: string[] = ['เอกสารแนบ 1', 'เอกสารแนบ 2'];
     if (r[12]) {
       try {
@@ -78,6 +78,16 @@ export async function getCoursesFromSheet() {
       trainingDays: r[11] ? Number(r[11]) : null,
       requiredDocs,
     };
+  });
+
+  // เรียงลำดับรุ่นใหม่ล่าสุดขึ้นก่อนเป็นลำดับแรก (ด้านซ้ายมือ)
+  return courses.reverse().sort((a, b) => {
+    const timeA = parseInt(a.id.replace(/\D/g, '')) || 0;
+    const timeB = parseInt(b.id.replace(/\D/g, '')) || 0;
+    if (timeA && timeB) {
+      return timeB - timeA;
+    }
+    return 0;
   });
 }
 
