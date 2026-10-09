@@ -1,16 +1,10 @@
 import { google } from 'googleapis';
+import { getGoogleAuthClient } from './googleAuth';
 
 const SPREADSHEET_ID = process.env.GOOGLE_SHEET_SPREADSHEET_ID || '1Q4yMIsV7dxvrqPyea5dJKqLl5dBhgq6nMQF0BARFizQ';
-const SERVICE_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'ai-pr-dsd@thinking-pillar-496305-d5.iam.gserviceaccount.com';
-const PRIVATE_KEY = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
 
 function getSheetsClient() {
-  const auth = new google.auth.JWT(
-    SERVICE_EMAIL,
-    undefined,
-    PRIVATE_KEY,
-    ['https://www.googleapis.com/auth/spreadsheets']
-  );
+  const auth = getGoogleAuthClient(['https://www.googleapis.com/auth/spreadsheets']);
   return google.sheets({ version: 'v4', auth });
 }
 
