@@ -199,38 +199,41 @@ export async function getApplicationsFromSheet(courseId?: string) {
   });
   const rows = res.data.values || [];
   let apps = rows.map((r, index) => {
+    // Fail-safe: if row was ever shifted into column Q (index 16)
+    const rowData = (!r[0] && r[16]) ? r.slice(16) : r;
+
     let documents: any[] = [];
-    if (r[16]) {
+    if (rowData[16]) {
       try {
-        documents = JSON.parse(r[16]);
+        documents = JSON.parse(rowData[16]);
       } catch {}
     }
 
     let answers: any[] = [];
-    if (r[17]) {
+    if (rowData[17]) {
       try {
-        answers = JSON.parse(r[17]);
+        answers = JSON.parse(rowData[17]);
       } catch {}
     }
 
     return {
       rowIndex: index + 2,
-      id: r[0],
-      applicationNumber: r[1],
-      courseId: r[2],
-      titlePrefix: r[3] || '',
-      firstName: r[4] || '',
-      lastName: r[5] || '',
-      idCardNumber: (r[6] || '').replace(/^'/, ''),
-      phoneNumber: (r[7] || '').replace(/^'/, ''),
-      age: Number(r[8]) || null,
-      educationLevel: r[9] || '',
-      occupation: r[10] || '',
-      qualificationStatus: r[11] || 'PENDING',
-      selectionStatus: r[12] || 'PENDING',
-      submittedAt: r[13] || '',
-      email: r[14] || '',
-      address: r[15] || '',
+      id: rowData[0] || '',
+      applicationNumber: rowData[1] || '',
+      courseId: rowData[2] || '',
+      titlePrefix: rowData[3] || '',
+      firstName: rowData[4] || '',
+      lastName: rowData[5] || '',
+      idCardNumber: (rowData[6] || '').replace(/^'/, ''),
+      phoneNumber: (rowData[7] || '').replace(/^'/, ''),
+      age: Number(rowData[8]) || null,
+      educationLevel: rowData[9] || '',
+      occupation: rowData[10] || '',
+      qualificationStatus: rowData[11] || 'PENDING',
+      selectionStatus: rowData[12] || 'PENDING',
+      submittedAt: rowData[13] || '',
+      email: rowData[14] || '',
+      address: rowData[15] || '',
       documents,
       answers,
     };
@@ -263,9 +266,18 @@ export async function addApplicationToSheet(app: {
   answersJson?: string;
 }) {
   const sheets = getSheetsClient();
-  await sheets.spreadsheets.values.append({
+  
+  // Find current rows count in column A to strictly write into applications!A{nextRow}:R{nextRow}
+  const checkRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'applications!A:R',
+    range: 'applications!A:A',
+  });
+  const currentRows = checkRes.data.values || [];
+  const nextRow = Math.max(2, currentRows.length + 1);
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `applications!A${nextRow}:R${nextRow}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [[
