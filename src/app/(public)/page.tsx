@@ -96,11 +96,16 @@ export default async function PublicHomePage() {
 
                   <div>
                     <h4 className="text-base font-bold text-slate-900 group-hover:text-sky-600 transition leading-snug">
-                      {course.title}
+                      {course.title.startsWith('หลักสูตร') ? course.title : `หลักสูตร ${course.title}`}
                     </h4>
-                    <p className="text-xs text-slate-500 mt-2 line-clamp-3 leading-relaxed">
-                      {course.description}
-                    </p>
+                    {course.description && (
+                      <div className="mt-2 space-y-0.5">
+                        <span className="text-[11px] font-bold text-slate-700 block">รายละเอียดหลักสูตร:</span>
+                        <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">
+                          {course.description}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-600">

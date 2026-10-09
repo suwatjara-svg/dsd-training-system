@@ -253,11 +253,14 @@ export default function AdminHomePage() {
 
                   <div>
                     <h3 className="text-base font-bold text-slate-800 group-hover:text-sky-600 transition leading-snug">
-                      {c.title}
+                      {c.title.startsWith('หลักสูตร') ? c.title : `หลักสูตร ${c.title}`}
                     </h3>
-                    <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">
-                      {c.description || 'ไม่มีรายละเอียดเพิ่มเติม'}
-                    </p>
+                    <div className="mt-1.5 space-y-0.5">
+                      <span className="text-[11px] font-semibold text-slate-600 block">รายละเอียดหลักสูตร:</span>
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {c.description || 'ไม่มีรายละเอียดเพิ่มเติม'}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Batch Stats */}

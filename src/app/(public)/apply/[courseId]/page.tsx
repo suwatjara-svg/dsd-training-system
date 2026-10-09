@@ -102,13 +102,18 @@ export default async function PublicApplyPage({
           </div>
 
           <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-800 leading-snug">
-            {course.title}
+            {course.title.startsWith('หลักสูตร') ? course.title : `หลักสูตร ${course.title}`}
           </h2>
 
           {course.description && (
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-              {course.description}
-            </p>
+            <div className="space-y-1.5 pt-1">
+              <span className="text-xs sm:text-sm font-bold text-slate-700 block">
+                รายละเอียดหลักสูตร:
+              </span>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                {course.description}
+              </p>
+            </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 pt-3 border-t border-slate-100 text-xs sm:text-sm text-slate-600">

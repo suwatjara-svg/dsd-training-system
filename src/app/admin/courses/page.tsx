@@ -39,8 +39,15 @@ export default async function AdminCoursesPage() {
                 </span>
               </div>
 
-              <h3 className="text-base font-bold text-slate-800">{c.title}</h3>
-              <p className="text-xs text-slate-500 line-clamp-2">{c.description}</p>
+              <h3 className="text-base font-bold text-slate-800">
+                {c.title.startsWith('หลักสูตร') ? c.title : `หลักสูตร ${c.title}`}
+              </h3>
+              {c.description && (
+                <div className="space-y-0.5">
+                  <span className="text-[11px] font-semibold text-slate-600 block">รายละเอียดหลักสูตร:</span>
+                  <p className="text-xs text-slate-500 line-clamp-2">{c.description}</p>
+                </div>
+              )}
 
               <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600">
                 <p>จำนวนที่รับ: <strong className="text-slate-800">{c.capacity} คน</strong></p>

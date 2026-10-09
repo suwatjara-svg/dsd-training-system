@@ -137,21 +137,49 @@ export default function ScreeningPage() {
   // Actions
   const handleSaveQualification = async (status: string) => {
     if (!currentApplicant) return;
+    const targetStatus = qualStatus === status ? 'PENDING' : status;
     setActionLoading(true);
+    setQualStatus(targetStatus);
+
+    // Optimistically update current applicant in memory
+    if (screeningData?.applicants) {
+      const updatedList = [...screeningData.applicants];
+      if (updatedList[currentIndex]) {
+        updatedList[currentIndex] = {
+          ...updatedList[currentIndex],
+          qualificationStatus: targetStatus,
+          screening: {
+            ...updatedList[currentIndex].screening,
+            qualificationStatus: targetStatus,
+            disqualifiedReason: targetStatus === 'NOT_QUALIFIED' ? (disqualReason || 'คุณสมบัติไม่ตรงตามประกาศ') : '',
+          },
+        };
+        setScreeningData((prev: any) => ({
+          ...prev,
+          applicants: updatedList,
+        }));
+      }
+    }
+
     try {
-      await fetch('/api/screening/evaluate', {
+      const res = await fetch('/api/screening/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           applicationId: currentApplicant.id,
-          qualificationStatus: status,
-          disqualifiedReason: status === 'NOT_QUALIFIED' ? (disqualReason || 'คุณสมบัติไม่ตรงตามประกาศ') : null,
+          qualificationStatus: targetStatus,
+          disqualifiedReason: targetStatus === 'NOT_QUALIFIED' ? (disqualReason || 'คุณสมบัติไม่ตรงตามประกาศ') : null,
         }),
       });
-      setQualStatus(status);
-      fetchQueue(selectedCourseId, filterMode);
-    } catch (err) {
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'บันทึกคุณสมบัติไม่สำเร็จ');
+      }
+      await fetchQueue(selectedCourseId, filterMode);
+    } catch (err: any) {
       console.error(err);
+      alert(err.message || 'เกิดข้อผิดพลาดในการบันทึกคุณสมบัติ');
+      setQualStatus(currentApplicant.screening?.qualificationStatus || 'PENDING');
     } finally {
       setActionLoading(false);
     }
@@ -241,7 +269,10 @@ export default function ScreeningPage() {
           </Link>
           {courses.find((c) => c.id === selectedCourseId) && (
             <div className="px-3.5 py-2 rounded-xl bg-sky-50 border border-sky-200 text-xs font-bold text-sky-900 max-w-md truncate">
-              หลักสูตร: {courses.find((c) => c.id === selectedCourseId)?.title}
+              {(() => {
+                const t = courses.find((c) => c.id === selectedCourseId)?.title || '';
+                return t.startsWith('หลักสูตร') ? t : `หลักสูตร: ${t}`;
+              })()}
             </div>
           )}
         </div>
@@ -543,24 +574,28 @@ export default function ScreeningPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <button
+                  type="button"
                   onClick={() => handleSaveQualification('QUALIFIED')}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition border ${
+                  disabled={actionLoading}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition border cursor-pointer ${
                     qualStatus === 'QUALIFIED'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-300'
                       : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'
-                  }`}
+                  } disabled:opacity-50`}
                 >
                   <CheckCircle className="w-4 h-4" />
                   <span>ผ่านคุณสมบัติ (Y)</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => handleSaveQualification('NOT_QUALIFIED')}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition border ${
+                  disabled={actionLoading}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition border cursor-pointer ${
                     qualStatus === 'NOT_QUALIFIED'
-                      ? 'bg-rose-600 text-white border-rose-600 shadow-md'
+                      ? 'bg-rose-600 text-white border-rose-600 shadow-md ring-2 ring-rose-300'
                       : 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50'
-                  }`}
+                  } disabled:opacity-50`}
                 >
                   <XCircle className="w-4 h-4" />
                   <span>ไม่ผ่านคุณสมบัติ</span>
