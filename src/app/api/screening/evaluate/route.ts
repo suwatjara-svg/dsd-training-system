@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { updateApplicationStatusInSheet } from '@/lib/googleSheetsDb';
+import { updateApplicationEvaluationInSheet } from '@/lib/googleSheetsDb';
 
 export async function POST(request: Request) {
   try {
@@ -13,29 +13,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden: สิทธิ์ไม่เพียงพอ' }, { status: 403 });
     }
 
-    const { applicationId, qualificationStatus } = await request.json();
+    const body = await request.json();
+    const {
+      applicationId,
+      qualificationStatus,
+      selectionStatus,
+      contactStatus,
+      interestStatus,
+      notes,
+    } = body;
 
-    if (!applicationId || !qualificationStatus) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+    if (!applicationId) {
+      return NextResponse.json({ error: 'Missing applicationId' }, { status: 400 });
     }
 
-    let normalizedStatus = qualificationStatus;
-    if (qualificationStatus === 'PASSED') normalizedStatus = 'QUALIFIED';
-    if (qualificationStatus === 'FAILED') normalizedStatus = 'NOT_QUALIFIED';
+    let normalizedQual = qualificationStatus;
+    if (qualificationStatus === 'PASSED') normalizedQual = 'QUALIFIED';
+    if (qualificationStatus === 'FAILED') normalizedQual = 'NOT_QUALIFIED';
 
-    const VALID_QUAL_STATUSES = ['PENDING', 'QUALIFIED', 'NOT_QUALIFIED'];
-    if (!VALID_QUAL_STATUSES.includes(normalizedStatus)) {
-      return NextResponse.json(
-        { error: 'สถานะคุณสมบัติไม่ถูกต้อง (ต้องเป็น PENDING, QUALIFIED, หรือ NOT_QUALIFIED)' },
-        { status: 400 }
-      );
-    }
+    await updateApplicationEvaluationInSheet(applicationId, {
+      qualificationStatus: normalizedQual,
+      selectionStatus,
+      contactStatus,
+      interestStatus,
+      notes,
+    });
 
-    await updateApplicationStatusInSheet(applicationId, 'qualificationStatus', normalizedStatus);
-
-    return NextResponse.json({ success: true, qualificationStatus: normalizedStatus });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Evaluate error:', error);
-    return NextResponse.json({ error: 'Failed to update qualification' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update evaluation' }, { status: 500 });
   }
 }

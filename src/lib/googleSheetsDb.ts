@@ -350,6 +350,50 @@ export async function updateApplicationStatusInSheet(
   });
 }
 
+export async function updateApplicationEvaluationInSheet(
+  applicationId: string,
+  data: {
+    qualificationStatus?: string;
+    selectionStatus?: string;
+    contactStatus?: string;
+    interestStatus?: string;
+    notes?: string;
+  }
+) {
+  const apps = await getApplicationsFromSheet();
+  const target = apps.find((a) => a.id === applicationId);
+  if (!target) return false;
+
+  const sheets = getSheetsClient();
+
+  // 1. Update columns L (qualificationStatus) and M (selectionStatus) in applications sheet
+  const newQual = data.qualificationStatus || target.qualificationStatus || 'PENDING';
+  const newSel = data.selectionStatus || target.selectionStatus || 'PENDING';
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `applications!L${target.rowIndex}:M${target.rowIndex}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[newQual, newSel]],
+    },
+  });
+
+  // 2. If contact details provided, record in contacts sheet
+  if (data.contactStatus || data.interestStatus || (data.notes && data.notes.trim())) {
+    await addContactToSheet({
+      id: `contact_${Date.now()}`,
+      applicationId,
+      contactStatus: data.contactStatus || 'NOT_CONTACTED',
+      interestStatus: data.interestStatus || 'UNKNOWN',
+      notes: data.notes || '',
+      contactDate: new Date().toLocaleString('th-TH'),
+    });
+  }
+
+  return true;
+}
+
 // -------------------------------------------------------------
 // 4. CONTACTS
 // -------------------------------------------------------------

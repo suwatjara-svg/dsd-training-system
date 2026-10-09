@@ -44,6 +44,8 @@ export default function ScreeningPage() {
   const [contactStatus, setContactStatus] = useState<string>('NOT_CONTACTED');
   const [interestStatus, setInterestStatus] = useState<string>('UNKNOWN');
   const [callNotes, setCallNotes] = useState<string>('');
+  const [selectionStatus, setSelectionStatus] = useState<string>('PENDING');
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Capacity Warning Modal state
@@ -98,6 +100,9 @@ export default function ScreeningPage() {
       setContactStatus(lastCall?.contactStatus || 'NOT_CONTACTED');
       setInterestStatus(lastCall?.interestStatus || 'UNKNOWN');
       setCallNotes(lastCall?.notes || '');
+
+      setSelectionStatus(currentApplicant.selection?.selectionStatus || 'PENDING');
+      setSaveSuccess(false);
     }
   }, [currentApplicant]);
 
@@ -127,11 +132,11 @@ export default function ScreeningPage() {
       } else if (e.key === 'p' || e.key === 'P') {
         handlePrev();
       } else if (e.key === 'y' || e.key === 'Y') {
-        handleSaveQualification('QUALIFIED');
+        setQualStatus((prev) => (prev === 'QUALIFIED' ? 'PENDING' : 'QUALIFIED'));
       } else if (e.key === 's' || e.key === 'S') {
-        handleSelection('SELECTED');
+        setSelectionStatus((prev) => (prev === 'SELECTED' ? 'PENDING' : 'SELECTED'));
       } else if (e.key === 'w' || e.key === 'W') {
-        handleSelection('WAITLIST');
+        setSelectionStatus((prev) => (prev === 'WAITLIST' ? 'PENDING' : 'WAITLIST'));
       }
     };
 
@@ -139,12 +144,11 @@ export default function ScreeningPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, screeningData, currentApplicant]);
 
-  // Actions
-  const handleSaveQualification = async (status: string) => {
+  // Unified Save All Action
+  const handleSaveAll = async () => {
     if (!currentApplicant) return;
-    const targetStatus = qualStatus === status ? 'PENDING' : status;
     setActionLoading(true);
-    setQualStatus(targetStatus);
+    setSaveSuccess(false);
 
     // Optimistically update current applicant in memory
     if (screeningData?.applicants) {
@@ -152,12 +156,26 @@ export default function ScreeningPage() {
       if (updatedList[currentIndex]) {
         updatedList[currentIndex] = {
           ...updatedList[currentIndex],
-          qualificationStatus: targetStatus,
+          qualificationStatus: qualStatus,
+          selectionStatus,
           screening: {
             ...updatedList[currentIndex].screening,
-            qualificationStatus: targetStatus,
-            disqualifiedReason: targetStatus === 'NOT_QUALIFIED' ? (disqualReason || 'คุณสมบัติไม่ตรงตามประกาศ') : '',
+            qualificationStatus: qualStatus,
+            disqualifiedReason: qualStatus === 'NOT_QUALIFIED' ? disqualReason : '',
           },
+          selection: {
+            ...updatedList[currentIndex].selection,
+            selectionStatus,
+          },
+          contacts: [
+            {
+              contactStatus,
+              interestStatus,
+              notes: callNotes,
+              contactDate: new Date().toLocaleString('th-TH'),
+            },
+            ...(updatedList[currentIndex].contacts || []).slice(1),
+          ],
         };
         setScreeningData((prev: any) => ({
           ...prev,
@@ -172,73 +190,25 @@ export default function ScreeningPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           applicationId: currentApplicant.id,
-          qualificationStatus: targetStatus,
-          disqualifiedReason: targetStatus === 'NOT_QUALIFIED' ? (disqualReason || 'คุณสมบัติไม่ตรงตามประกาศ') : null,
-        }),
-      });
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || 'บันทึกคุณสมบัติไม่สำเร็จ');
-      }
-      await fetchQueue(selectedCourseId, filterMode, false);
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || 'เกิดข้อผิดพลาดในการบันทึกคุณสมบัติ');
-      setQualStatus(currentApplicant.screening?.qualificationStatus || 'PENDING');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleSaveCall = async () => {
-    if (!currentApplicant) return;
-    setActionLoading(true);
-    try {
-      await fetch('/api/screening/call-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          applicationId: currentApplicant.id,
+          qualificationStatus: qualStatus,
+          selectionStatus,
           contactStatus,
           interestStatus,
           notes: callNotes,
         }),
       });
-      await fetchQueue(selectedCourseId, filterMode, false);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
-  const handleSelection = async (status: string, forceOverride = false) => {
-    if (!currentApplicant) return;
-    setActionLoading(true);
-    try {
-      const res = await fetch('/api/screening/select', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          applicationId: currentApplicant.id,
-          selectionStatus: status,
-          remarks: callNotes,
-          forceOverride,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok && data.error === 'CAPACITY_REACHED') {
-        setShowOverrideModal(true);
-        return;
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'บันทึกข้อมูลไม่สำเร็จ');
       }
 
-      setShowOverrideModal(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
       await fetchQueue(selectedCourseId, filterMode, false);
-      // Auto advance to next person
-      handleNext();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
       setActionLoading(false);
     }
@@ -623,13 +593,12 @@ export default function ScreeningPage() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => handleSaveQualification('QUALIFIED')}
-                  disabled={actionLoading}
+                  onClick={() => setQualStatus(qualStatus === 'QUALIFIED' ? 'PENDING' : 'QUALIFIED')}
                   className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition border cursor-pointer ${
                     qualStatus === 'QUALIFIED'
                       ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-300'
                       : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'
-                  } disabled:opacity-50`}
+                  }`}
                 >
                   <CheckCircle className="w-4 h-4" />
                   <span>ผ่านคุณสมบัติ (Y)</span>
@@ -637,13 +606,12 @@ export default function ScreeningPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleSaveQualification('NOT_QUALIFIED')}
-                  disabled={actionLoading}
+                  onClick={() => setQualStatus(qualStatus === 'NOT_QUALIFIED' ? 'PENDING' : 'NOT_QUALIFIED')}
                   className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition border cursor-pointer ${
                     qualStatus === 'NOT_QUALIFIED'
                       ? 'bg-rose-600 text-white border-rose-600 shadow-md ring-2 ring-rose-300'
                       : 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50'
-                  } disabled:opacity-50`}
+                  }`}
                 >
                   <XCircle className="w-4 h-4" />
                   <span>ไม่ผ่านคุณสมบัติ</span>
@@ -685,9 +653,9 @@ export default function ScreeningPage() {
                         key={opt.id}
                         type="button"
                         onClick={() => setContactStatus(opt.id)}
-                        className={`py-2 px-2.5 rounded-lg border text-center transition ${
+                        className={`py-2 px-2.5 rounded-lg border text-center transition cursor-pointer ${
                           contactStatus === opt.id
-                            ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                            ? 'bg-sky-600 text-white border-sky-600 shadow-sm font-bold'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
@@ -706,7 +674,7 @@ export default function ScreeningPage() {
                       <button
                         type="button"
                         onClick={() => setInterestStatus('INTERESTED')}
-                        className={`py-2 px-1 rounded-lg border text-center transition ${
+                        className={`py-2 px-1 rounded-lg border text-center transition cursor-pointer ${
                           interestStatus === 'INTERESTED'
                             ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                             : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'
@@ -717,7 +685,7 @@ export default function ScreeningPage() {
                       <button
                         type="button"
                         onClick={() => setInterestStatus('NOT_INTERESTED')}
-                        className={`py-2 px-1 rounded-lg border text-center transition ${
+                        className={`py-2 px-1 rounded-lg border text-center transition cursor-pointer ${
                           interestStatus === 'NOT_INTERESTED'
                             ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
                             : 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50'
@@ -728,7 +696,7 @@ export default function ScreeningPage() {
                       <button
                         type="button"
                         onClick={() => setInterestStatus('UNDECIDED')}
-                        className={`py-2 px-1 rounded-lg border text-center transition ${
+                        className={`py-2 px-1 rounded-lg border text-center transition cursor-pointer ${
                           interestStatus === 'UNDECIDED'
                             ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
                             : 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50'
@@ -750,13 +718,6 @@ export default function ScreeningPage() {
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none"
                   />
                 </div>
-
-                <button
-                  onClick={handleSaveCall}
-                  className="w-full py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold hover:bg-slate-700 transition"
-                >
-                  บันทึกประวัติการโทร (Save Call Log)
-                </button>
               </div>
             </div>
 
@@ -768,13 +729,20 @@ export default function ScreeningPage() {
                   <span>3. ตัดสินคัดเลือก (Selection Decision)</span>
                 </h3>
 
-                {isSelected ? (
-                  <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-600 text-white shadow-sm">
-                    ⭐ คัดเลือกแล้ว
+                {selectionStatus === 'SELECTED' ? (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-600 text-white shadow-sm flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-white" />
+                    <span>คัดเลือกแล้ว</span>
                   </span>
-                ) : isWaitlist ? (
-                  <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-500 text-white shadow-sm">
-                    สำรองลำดับที่ {currentApplicant.selection?.waitlistOrder}
+                ) : selectionStatus === 'WAITLIST' ? (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-500 text-white shadow-sm flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-white" />
+                    <span>ผู้สมัครสำรอง</span>
+                  </span>
+                ) : selectionStatus === 'REJECTED' ? (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-rose-600 text-white shadow-sm flex items-center gap-1">
+                    <XCircle className="w-3 h-3 text-white" />
+                    <span>ไม่ผ่านการคัดเลือก</span>
                   </span>
                 ) : (
                   <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-200 text-slate-700">
@@ -785,34 +753,85 @@ export default function ScreeningPage() {
 
               <div className="space-y-2">
                 <button
-                  onClick={() => handleSelection('SELECTED')}
-                  disabled={actionLoading}
-                  className="w-full py-3 px-4 rounded-xl text-sm font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md active:scale-[0.99] transition flex items-center justify-center gap-2"
+                  type="button"
+                  onClick={() => {
+                    if (selectionStatus !== 'SELECTED' && stats?.isFull) {
+                      setShowOverrideModal(true);
+                    } else {
+                      setSelectionStatus(selectionStatus === 'SELECTED' ? 'PENDING' : 'SELECTED');
+                    }
+                  }}
+                  className={`w-full py-3 px-4 rounded-xl text-sm font-extrabold transition flex items-center justify-center gap-2 cursor-pointer border-2 ${
+                    selectionStatus === 'SELECTED'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-400'
+                      : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'
+                  }`}
                 >
-                  <Star className="w-4 h-4 fill-white" />
+                  <Star className={`w-4 h-4 ${selectionStatus === 'SELECTED' ? 'fill-white' : ''}`} />
                   <span>⭐ คัดเลือกเป็นผู้เข้าฝึกอบรม (S)</span>
                 </button>
 
                 <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => handleSelection('WAITLIST')}
-                    disabled={actionLoading}
-                    className="py-2.5 px-3 rounded-xl text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 transition flex items-center justify-center gap-1.5"
+                    type="button"
+                    onClick={() => setSelectionStatus(selectionStatus === 'WAITLIST' ? 'PENDING' : 'WAITLIST')}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+                      selectionStatus === 'WAITLIST'
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-md ring-2 ring-amber-300'
+                        : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50'
+                    }`}
                   >
-                    <Clock className="w-4 h-4 text-amber-700" />
+                    <Clock className="w-4 h-4" />
                     <span>จัดเป็นผู้สมัครสำรอง (W)</span>
                   </button>
 
                   <button
-                    onClick={() => handleSelection('REJECTED')}
-                    disabled={actionLoading}
-                    className="py-2.5 px-3 rounded-xl text-xs font-bold text-rose-900 bg-rose-100 hover:bg-rose-200 border border-rose-300 transition flex items-center justify-center gap-1.5"
+                    type="button"
+                    onClick={() => setSelectionStatus(selectionStatus === 'REJECTED' ? 'PENDING' : 'REJECTED')}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+                      selectionStatus === 'REJECTED'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-md ring-2 ring-rose-300'
+                        : 'bg-white text-rose-900 border-rose-300 hover:bg-rose-50'
+                    }`}
                   >
-                    <XCircle className="w-4 h-4 text-rose-700" />
+                    <XCircle className="w-4 h-4" />
                     <span>ไม่ผ่านการคัดเลือก</span>
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* 4. Unified Bottom Save Card */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-md space-y-2.5">
+              <button
+                type="button"
+                onClick={handleSaveAll}
+                disabled={actionLoading}
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition active:scale-[0.99] disabled:opacity-50"
+              >
+                {actionLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>กำลังบันทึกข้อมูล...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>💾 บันทึกผลการคัดเลือก (Save Changes)</span>
+                  </>
+                )}
+              </button>
+
+              {saveSuccess && (
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold text-center flex items-center justify-center gap-1.5 animate-in fade-in">
+                  <CheckCircle className="w-4 h-4 text-emerald-600" />
+                  <span>บันทึกผลการคัดเลือกสำเร็จเรียบร้อยแล้ว</span>
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-500 text-center">
+                เลือกผลในข้อ 1, 2, 3 ตามต้องการ แล้วกดปุ่มบันทึกด้านบนนี้ (ข้อไหนยังไม่เลือกก็บันทึกได้)
+              </p>
             </div>
 
             {/* Quick Prev / Next Navigation */}
@@ -859,14 +878,20 @@ export default function ScreeningPage() {
 
             <div className="space-y-2 pt-2">
               <button
-                onClick={() => handleSelection('WAITLIST')}
+                onClick={() => {
+                  setSelectionStatus('WAITLIST');
+                  setShowOverrideModal(false);
+                }}
                 className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm transition"
               >
                 จัดเป็นผู้สมัครสำรอง (แนะนำ)
               </button>
 
               <button
-                onClick={() => handleSelection('SELECTED', true)}
+                onClick={() => {
+                  setSelectionStatus('SELECTED');
+                  setShowOverrideModal(false);
+                }}
                 className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs transition"
               >
                 ยืนยันคัดเลือกเพิ่มเป็นกรณีพิเศษ (Override Capacity)
