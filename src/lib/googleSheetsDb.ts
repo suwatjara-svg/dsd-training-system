@@ -267,13 +267,38 @@ export async function addApplicationToSheet(app: {
 }) {
   const sheets = getSheetsClient();
   
-  // Find current rows count in column A to strictly write into applications!A{nextRow}:R{nextRow}
+  // 1. Get Column A to inspect current rows
   const checkRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: 'applications!A:A',
   });
   const currentRows = checkRes.data.values || [];
-  const nextRow = Math.max(2, currentRows.length + 1);
+  
+  // Auto-heal headers if Row 1 was deleted
+  if (currentRows.length === 0 || !currentRows[0] || !currentRows[0][0]) {
+    const headers = [
+      'id', 'applicationNumber', 'courseId', 'titlePrefix', 'firstName', 'lastName',
+      'idCardNumber', 'phoneNumber', 'age', 'educationLevel', 'occupation',
+      'qualificationStatus', 'selectionStatus', 'submittedAt', 'email', 'address',
+      'documentsJson', 'answersJson'
+    ];
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'applications!A1:R1',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [headers] },
+    });
+  }
+
+  // Find next row by scanning from bottom for last non-empty cell in column A
+  let lastNonEmptyRow = 1;
+  for (let i = currentRows.length - 1; i >= 0; i--) {
+    if (currentRows[i] && currentRows[i][0] && String(currentRows[i][0]).trim() !== '') {
+      lastNonEmptyRow = i + 1;
+      break;
+    }
+  }
+  const nextRow = Math.max(2, lastNonEmptyRow + 1);
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
@@ -359,9 +384,23 @@ export async function addContactToSheet(contact: {
   contactDate: string;
 }) {
   const sheets = getSheetsClient();
-  await sheets.spreadsheets.values.append({
+  const checkRes = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'contacts!A:F',
+    range: 'contacts!A:A',
+  });
+  const currentRows = checkRes.data.values || [];
+  let lastNonEmptyRow = 1;
+  for (let i = currentRows.length - 1; i >= 0; i--) {
+    if (currentRows[i] && currentRows[i][0] && String(currentRows[i][0]).trim() !== '') {
+      lastNonEmptyRow = i + 1;
+      break;
+    }
+  }
+  const nextRow = Math.max(2, lastNonEmptyRow + 1);
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `contacts!A${nextRow}:F${nextRow}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [[
