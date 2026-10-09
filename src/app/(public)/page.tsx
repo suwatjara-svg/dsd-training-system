@@ -8,20 +8,12 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { formatThaiDate } from '@/lib/utils';
-import { getCoursesFromSheet, getApplicationsFromSheet } from '@/lib/googleSheetsDb';
+import { getCoursesFromSheet } from '@/lib/googleSheetsDb';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PublicHomePage() {
-  const [coursesRaw, apps] = await Promise.all([
-    getCoursesFromSheet(),
-    getApplicationsFromSheet(),
-  ]);
-
-  const courses = coursesRaw.map((course) => ({
-    ...course,
-    applicantCount: apps.filter((a) => a.courseId === course.id).length,
-  }));
+  const courses = await getCoursesFromSheet();
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -116,8 +108,6 @@ export default async function PublicHomePage() {
                       <Users className="w-4 h-4 text-slate-400" />
                       <span>
                         รับจำนวน: <strong className="text-slate-800">{course.capacity} คน</strong>
-                        <span className="text-slate-300 mx-2">•</span>
-                        สมัครแล้ว: <strong className="text-sky-700 font-bold">{course.applicantCount} คน</strong>
                       </span>
                     </div>
 
