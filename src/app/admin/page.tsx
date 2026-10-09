@@ -261,14 +261,25 @@ export default function AdminHomePage() {
                   </div>
 
                   {/* Batch Stats */}
-                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs">
+                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 text-xs">
+                    <div className="bg-sky-50/90 p-2.5 rounded-xl border border-sky-200">
+                      <span className="text-sky-700 block font-semibold text-[11px] flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        <span>สมัครแล้ว</span>
+                      </span>
+                      <strong className="text-sky-950 text-base mt-0.5 block font-extrabold">
+                        {c.applicantCount ?? c._count?.applications ?? 0} คน
+                      </strong>
+                    </div>
+
                     <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                       <span className="text-slate-400 block font-medium text-[11px]">จำนวนที่รับ</span>
-                      <strong className="text-slate-800 text-sm mt-0.5 block">{c.capacity} คน</strong>
+                      <strong className="text-slate-800 text-base mt-0.5 block font-bold">{c.capacity} คน</strong>
                     </div>
-                    <div className={`p-2.5 rounded-xl border ${c.status === 'OPEN' ? 'bg-sky-50 border-sky-100' : 'bg-slate-100 border-slate-200'}`}>
-                      <span className={`block font-medium text-[11px] ${c.status === 'OPEN' ? 'text-sky-600' : 'text-slate-500'}`}>สถานะ</span>
-                      <strong className={`text-sm mt-0.5 block ${c.status === 'OPEN' ? 'text-sky-900' : 'text-slate-700'}`}>
+
+                    <div className={`p-2.5 rounded-xl border ${c.status === 'OPEN' ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-100 border-slate-200'}`}>
+                      <span className={`block font-medium text-[11px] ${c.status === 'OPEN' ? 'text-emerald-700' : 'text-slate-500'}`}>สถานะ</span>
+                      <strong className={`text-xs mt-1 block font-bold truncate ${c.status === 'OPEN' ? 'text-emerald-800' : 'text-slate-700'}`}>
                         {c.status === 'OPEN' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
                       </strong>
                     </div>

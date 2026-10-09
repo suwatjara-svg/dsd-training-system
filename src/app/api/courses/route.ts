@@ -1,11 +1,28 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { getCoursesFromSheet, addCourseToSheet, updateCourseStatusInSheet, deleteCourseFromSheet } from '@/lib/googleSheetsDb';
+import { getCoursesFromSheet, getApplicationsFromSheet, addCourseToSheet, updateCourseStatusInSheet, deleteCourseFromSheet } from '@/lib/googleSheetsDb';
 
 export async function GET() {
   try {
-    const courses = await getCoursesFromSheet();
-    return NextResponse.json(courses);
+    const [courses, apps] = await Promise.all([
+      getCoursesFromSheet(),
+      getApplicationsFromSheet(),
+    ]);
+
+    const coursesWithCounts = courses.map((c) => {
+      const courseApps = apps.filter((a) => a.courseId === c.id);
+      return {
+        ...c,
+        applicantCount: courseApps.length,
+        selectedCount: courseApps.filter((a) => a.selectionStatus === 'SELECTED').length,
+        waitlistCount: courseApps.filter((a) => a.selectionStatus === 'WAITLIST').length,
+        _count: {
+          applications: courseApps.length,
+        },
+      };
+    });
+
+    return NextResponse.json(coursesWithCounts);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch courses' }, { status: 500 });
   }
