@@ -20,6 +20,9 @@ import {
   Sparkles,
   Copy,
   Check,
+  ExternalLink,
+  Eye,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { maskIdCard, formatFullIdCard, formatPhoneNumber, formatThaiDate } from '@/lib/utils';
 
@@ -60,24 +63,26 @@ export default function ScreeningPage() {
   }, [searchParams]);
 
   // 2. Fetch screening queue
-  const fetchQueue = useCallback(async (courseId: string, filter: string) => {
+  const fetchQueue = useCallback(async (courseId: string, filter: string, isFullReload = true) => {
     if (!courseId) return;
-    setLoading(true);
+    if (isFullReload) setLoading(true);
     try {
       const res = await fetch(`/api/screening/queue?courseId=${courseId}&filter=${filter}`);
       const data = await res.json();
       setScreeningData(data);
-      setCurrentIndex(0);
+      if (isFullReload) {
+        setCurrentIndex(0);
+      }
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (isFullReload) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (selectedCourseId) {
-      fetchQueue(selectedCourseId, filterMode);
+      fetchQueue(selectedCourseId, filterMode, true);
     }
   }, [selectedCourseId, filterMode, fetchQueue]);
 
@@ -175,7 +180,7 @@ export default function ScreeningPage() {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error || 'บันทึกคุณสมบัติไม่สำเร็จ');
       }
-      await fetchQueue(selectedCourseId, filterMode);
+      await fetchQueue(selectedCourseId, filterMode, false);
     } catch (err: any) {
       console.error(err);
       alert(err.message || 'เกิดข้อผิดพลาดในการบันทึกคุณสมบัติ');
@@ -199,7 +204,7 @@ export default function ScreeningPage() {
           notes: callNotes,
         }),
       });
-      fetchQueue(selectedCourseId, filterMode);
+      await fetchQueue(selectedCourseId, filterMode, false);
     } catch (err) {
       console.error(err);
     } finally {
@@ -229,7 +234,7 @@ export default function ScreeningPage() {
       }
 
       setShowOverrideModal(false);
-      await fetchQueue(selectedCourseId, filterMode);
+      await fetchQueue(selectedCourseId, filterMode, false);
       // Auto advance to next person
       handleNext();
     } catch (err) {
@@ -479,46 +484,89 @@ export default function ScreeningPage() {
                 </div>
               )}
 
-              {/* Uploaded Documents Review */}
+              {/* Uploaded Documents Review with Visual Image Preview */}
               <div className="border-t border-slate-100 pt-4 space-y-3">
-                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  เอกสารประกอบการสมัคร
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-purple-700" />
+                    <span>เอกสาร / รูปภาพแนบประกอบการสมัคร</span>
+                  </h4>
+                  {currentApplicant.documents && currentApplicant.documents.length > 0 && (
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      มีเอกสารแนบ {currentApplicant.documents.length} ไฟล์
+                    </span>
+                  )}
+                </div>
+
                 {currentApplicant.documents && currentApplicant.documents.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {currentApplicant.documents.map((doc: any) => {
                       const isDriveUrl = doc.fileUrl && doc.fileUrl.startsWith('http');
+                      const match = doc.fileUrl?.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                      const driveId = match ? match[1] : null;
+                      const previewUrl = driveId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w800` : doc.fileUrl;
+                      const isImg = /\.(jpe?g|png|webp|gif|bmp)$/i.test(doc.fileName || '') || (doc.fileUrl || '').includes('image');
+
                       return (
                         <div
                           key={doc.id}
-                          className="p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:border-sky-300 bg-slate-50/50 transition gap-2"
+                          className="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 hover:border-purple-300 transition space-y-2 flex flex-col justify-between"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <FileText className="w-4 h-4 text-sky-600 flex-shrink-0" />
-                            <div className="min-w-0 truncate">
-                              <p className="font-semibold text-slate-800 truncate">{doc.documentTitle}</p>
-                              <span className="text-[10px] text-emerald-600 font-medium block">
-                                {doc.fileName || 'เอกสารแนบ'}
-                              </span>
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="font-bold text-xs text-slate-800 truncate">{doc.documentTitle}</span>
+                              {isDriveUrl && (
+                                <a
+                                  href={doc.fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[11px] font-bold text-purple-700 hover:text-purple-900 inline-flex items-center gap-1 flex-shrink-0"
+                                >
+                                  <span>เปิดเต็มจอ</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
                             </div>
+
+                            {/* Image Preview Thumbnail */}
+                            {isDriveUrl && isImg ? (
+                              <a
+                                href={doc.fileUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block relative rounded-xl overflow-hidden border border-slate-200 bg-white group cursor-pointer aspect-video"
+                                title="คลิกเพื่อเปิดดูขนาดเต็ม"
+                              >
+                                <img
+                                  src={previewUrl}
+                                  alt={doc.documentTitle || 'รูปแนบ'}
+                                  className="w-full h-full object-contain group-hover:scale-105 transition duration-200"
+                                  loading="lazy"
+                                />
+                              </a>
+                            ) : isDriveUrl ? (
+                              <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 text-center">
+                                <FileText className="w-8 h-8 text-purple-700 mx-auto mb-1" />
+                                <span className="text-xs font-semibold text-purple-900 block truncate">{doc.fileName}</span>
+                                <a
+                                  href={doc.fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-block mt-2 px-3 py-1 rounded-lg bg-purple-700 text-white text-xs font-bold hover:bg-purple-800 transition"
+                                >
+                                  เปิดดูเอกสาร PDF
+                                </a>
+                              </div>
+                            ) : (
+                              <div className="p-3 rounded-xl bg-amber-50 text-amber-700 text-xs text-center border border-amber-200">
+                                ไฟล์ยังไม่พร้อมแสดงผล
+                              </div>
+                            )}
                           </div>
-                          {isDriveUrl ? (
-                            <a
-                              href={doc.fileUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-xs transition flex-shrink-0"
-                            >
-                              เปิดดู
-                            </a>
-                          ) : (
-                            <span
-                              className="px-2 py-1 rounded bg-amber-50 text-amber-700 text-[10px] font-medium border border-amber-200 flex-shrink-0 text-center"
-                              title="ไฟล์อยู่ใน /tmp หรือยังไม่ได้เปิด Google Drive API ใน Google Cloud"
-                            >
-                              เปิดดูไม่ได้
-                            </span>
-                          )}
+
+                          <div className="text-[10px] text-slate-500 truncate pt-1 border-t border-slate-200/60">
+                            ไฟล์: <span className="font-medium text-slate-700">{doc.fileName || '-'}</span>
+                          </div>
                         </div>
                       );
                     })}

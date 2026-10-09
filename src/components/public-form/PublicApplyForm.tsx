@@ -553,8 +553,19 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
                     className="block w-full text-xs sm:text-sm text-slate-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-100 file:text-purple-800 hover:file:bg-purple-200 cursor-pointer"
                   />
                   {selectedFile ? (
-                    <div className="text-[11px] sm:text-xs text-slate-600 truncate bg-white p-2 rounded-lg border border-slate-200">
-                      📎 <strong>{selectedFile.name}</strong> ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
+                    <div className="space-y-2">
+                      <div className="text-[11px] sm:text-xs text-slate-600 truncate bg-white p-2 rounded-lg border border-slate-200">
+                        📎 <strong>{selectedFile.name}</strong> ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
+                      </div>
+                      {selectedFile.type.startsWith('image/') && (
+                        <div className="relative w-28 h-28 rounded-xl overflow-hidden border border-purple-200 shadow-xs bg-white">
+                          <img
+                            src={URL.createObjectURL(selectedFile)}
+                            alt="ตัวอย่างรูปแนบ"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <span className="text-[11px] text-slate-400 block">
