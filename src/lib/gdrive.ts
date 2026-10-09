@@ -3,12 +3,11 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { Readable } from 'stream';
-import { put } from '@vercel/blob';
 import { getGoogleAuthClient } from './googleAuth';
 
 /**
- * Service to handle file upload for candidate documents.
- * Priority: Vercel Blob (Cloud CDN) -> Google Drive -> Local disk
+ * Service to handle file upload for candidate documents directly to Google Drive.
+ * Target Folder ID: 1im_FTcn_RMy7mRnQ9bDMX7O0qZdFfJNU
  */
 export async function uploadApplicationFile({
   courseCode,
@@ -25,27 +24,36 @@ export async function uploadApplicationFile({
   mimeType: string;
   buffer: Buffer;
 }): Promise<{ fileUrl: string; driveFileId?: string }> {
-  // 1. Primary Reliable Storage: Vercel Blob CDN (Fast, persistent, no quota blocks)
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID || '1im_FTcn_RMy7mRnQ9bDMX7O0qZdFfJNU';
+  const webhookUrl = process.env.GOOGLE_DRIVE_WEBHOOK_URL;
+
+  // 1. If Google Apps Script Web App is configured, upload directly through the owner's Google Drive
+  if (webhookUrl) {
     try {
-      const cleanFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const blobPath = `uploads/${courseCode}/${applicationNumber}/${Date.now()}_${cleanFileName}`;
-      const blobResult = await put(blobPath, buffer, {
-        access: 'public',
-        contentType: mimeType || 'application/octet-stream',
+      const base64 = buffer.toString('base64');
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folderId: parentFolderId,
+          fileName: `${applicationNumber}_${documentTitle}_${fileName}`,
+          mimeType: mimeType || 'application/octet-stream',
+          base64,
+        }),
       });
-      if (blobResult && blobResult.url) {
+      const data = await res.json();
+      if (data && data.fileUrl) {
         return {
-          fileUrl: blobResult.url,
+          fileUrl: data.fileUrl,
+          driveFileId: data.fileId,
         };
       }
-    } catch (blobErr: any) {
-      console.warn('Vercel Blob upload failed, attempting Google Drive fallback:', blobErr?.message);
+    } catch (whErr: any) {
+      console.warn('Google Drive Webhook upload warning:', whErr?.message);
     }
   }
 
-  // 2. Secondary Storage: Google Drive
-  const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID || '1im_FTcn_RMy7mRnQ9bDMX7O0qZdFfJNU';
+  // 2. Secondary Storage: Google Drive (Direct Service Account)
   try {
     const auth = getGoogleAuthClient(['https://www.googleapis.com/auth/drive']);
     const drive = google.drive({ version: 'v3', auth });
