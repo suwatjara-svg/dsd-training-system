@@ -2,9 +2,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'super-secret-production-key-training-management-system-2026'
-);
+import { SECRET_KEY } from '@/lib/token';
 
 export interface SessionUser {
   id: string;
@@ -18,13 +16,17 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function comparePassword(password: string, hash: string): Promise<boolean> {
-  if (!hash) return false;
-  if (hash.trim() === password.trim()) return true;
-  try {
-    return await bcrypt.compare(password, hash);
-  } catch {
-    return false;
+  if (!hash || !password) return false;
+  // If stored as bcrypt hash
+  if (hash.startsWith('$2a$') || hash.startsWith('$2b$')) {
+    try {
+      return await bcrypt.compare(password, hash);
+    } catch {
+      return false;
+    }
   }
+  // Safe string comparison for existing plaintext credentials in Google Sheets
+  return hash.trim() === password.trim();
 }
 
 export async function createSession(user: SessionUser): Promise<string> {

@@ -9,10 +9,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!['SUPER_ADMIN', 'ADMIN', 'OFFICER'].includes(user.role)) {
+      return NextResponse.json({ error: 'Forbidden: สิทธิ์ไม่เพียงพอ' }, { status: 403 });
+    }
+
     const { applicationId, selectionStatus } = await request.json();
 
     if (!applicationId || !selectionStatus) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+    }
+
+    const VALID_SELECTION_STATUSES = ['PENDING', 'SELECTED', 'WAITLIST', 'REJECTED'];
+    if (!VALID_SELECTION_STATUSES.includes(selectionStatus)) {
+      return NextResponse.json({ error: 'สถานะการคัดเลือกไม่ถูกต้อง' }, { status: 400 });
     }
 
     await updateApplicationStatusInSheet(applicationId, 'selectionStatus', selectionStatus);

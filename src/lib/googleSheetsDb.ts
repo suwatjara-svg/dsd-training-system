@@ -182,6 +182,18 @@ export async function deleteCourseFromSheet(courseId: string) {
   return true;
 }
 
+// Helper to prevent Google Sheets Formula Injection (Formula Injection Prevention)
+export function sanitizeSheetCell(val: any): any {
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed.startsWith('=') || trimmed.startsWith('+') || trimmed.startsWith('-') || trimmed.startsWith('@')) {
+      return `'${trimmed}`;
+    }
+    return trimmed;
+  }
+  return val;
+}
+
 // -------------------------------------------------------------
 // 3. APPLICATIONS
 // -------------------------------------------------------------
@@ -189,28 +201,44 @@ export async function getApplicationsFromSheet(courseId?: string) {
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'applications!A2:N',
+    range: 'applications!A2:R',
   });
   const rows = res.data.values || [];
   let apps = rows.map((r, index) => {
-    // Check if row has titlePrefix at index 3 or old schema without it
-    const hasPrefix = ['นาย', 'นาง', 'นางสาว'].some(p => (r[3] || '').includes(p)) || rows[0]?.length === 14;
+    let documents: any[] = [];
+    if (r[16]) {
+      try {
+        documents = JSON.parse(r[16]);
+      } catch {}
+    }
+
+    let answers: any[] = [];
+    if (r[17]) {
+      try {
+        answers = JSON.parse(r[17]);
+      } catch {}
+    }
+
     return {
       rowIndex: index + 2,
       id: r[0],
       applicationNumber: r[1],
       courseId: r[2],
       titlePrefix: r[3] || '',
-      firstName: r[4] || r[3] || '',
-      lastName: r[5] || r[4] || '',
-      idCardNumber: (r[6] || r[5] || '').replace(/^'/, ''),
-      phoneNumber: (r[7] || r[6] || '').replace(/^'/, ''),
-      age: Number(r[8] || r[7]) || null,
-      educationLevel: r[9] || r[8] || '',
-      occupation: r[10] || r[9] || '',
-      qualificationStatus: r[11] || r[10] || 'PENDING',
-      selectionStatus: r[12] || r[11] || 'PENDING',
-      submittedAt: r[13] || r[12] || '',
+      firstName: r[4] || '',
+      lastName: r[5] || '',
+      idCardNumber: (r[6] || '').replace(/^'/, ''),
+      phoneNumber: (r[7] || '').replace(/^'/, ''),
+      age: Number(r[8]) || null,
+      educationLevel: r[9] || '',
+      occupation: r[10] || '',
+      qualificationStatus: r[11] || 'PENDING',
+      selectionStatus: r[12] || 'PENDING',
+      submittedAt: r[13] || '',
+      email: r[14] || '',
+      address: r[15] || '',
+      documents,
+      answers,
     };
   });
 
@@ -235,28 +263,36 @@ export async function addApplicationToSheet(app: {
   qualificationStatus?: string;
   selectionStatus?: string;
   submittedAt: string;
+  email?: string;
+  address?: string;
+  documentsJson?: string;
+  answersJson?: string;
 }) {
   const sheets = getSheetsClient();
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'applications!A:N',
+    range: 'applications!A:R',
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [[
         app.id,
         app.applicationNumber,
         app.courseId,
-        app.titlePrefix,
-        app.firstName,
-        app.lastName,
+        sanitizeSheetCell(app.titlePrefix),
+        sanitizeSheetCell(app.firstName),
+        sanitizeSheetCell(app.lastName),
         `'${app.idCardNumber}`,
         `'${app.phoneNumber}`,
         app.age || '',
-        app.educationLevel || '',
-        app.occupation || '',
+        sanitizeSheetCell(app.educationLevel || ''),
+        sanitizeSheetCell(app.occupation || ''),
         app.qualificationStatus || 'PENDING',
         app.selectionStatus || 'PENDING',
         app.submittedAt,
+        sanitizeSheetCell(app.email || ''),
+        sanitizeSheetCell(app.address || ''),
+        app.documentsJson || '[]',
+        app.answersJson || '[]',
       ]],
     },
   });

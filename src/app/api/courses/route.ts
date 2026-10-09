@@ -18,6 +18,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!['SUPER_ADMIN', 'ADMIN', 'OFFICER'].includes(user.role)) {
+      return NextResponse.json({ error: 'Forbidden: สิทธิ์ไม่เพียงพอในการสร้างหลักสูตร' }, { status: 403 });
+    }
+
     const body = await request.json();
     const {
       title,
@@ -69,9 +73,17 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!['SUPER_ADMIN', 'ADMIN', 'OFFICER'].includes(user.role)) {
+      return NextResponse.json({ error: 'Forbidden: สิทธิ์ไม่เพียงพอ' }, { status: 403 });
+    }
+
     const { courseId, status } = await request.json();
     if (!courseId || !status) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
+    }
+
+    if (!['OPEN', 'CLOSED'].includes(status)) {
+      return NextResponse.json({ error: 'สถานะหลักสูตรไม่ถูกต้อง (ต้องเป็น OPEN หรือ CLOSED)' }, { status: 400 });
     }
 
     await updateCourseStatusInSheet(courseId, status);
@@ -87,6 +99,11 @@ export async function DELETE(request: Request) {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Only ADMIN or SUPER_ADMIN can delete courses
+    if (!['SUPER_ADMIN', 'ADMIN'].includes(user.role)) {
+      return NextResponse.json({ error: 'Forbidden: ต้องเป็นผู้ดูแลระบบระดับ Admin เท่านั้นจึงจะสามารถลบหลักสูตรได้' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

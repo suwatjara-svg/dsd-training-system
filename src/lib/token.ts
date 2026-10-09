@@ -1,8 +1,14 @@
 import { jwtVerify } from 'jose';
 
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'super-secret-production-key-training-management-system-2026'
-);
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    console.warn('WARNING: JWT_SECRET is not set in environment variables!');
+  }
+  return new TextEncoder().encode(secret || 'dsd-training-system-production-secret-jwt-key-2026');
+}
+
+export const SECRET_KEY = getJwtSecret();
 
 export async function verifyToken(token: string) {
   try {

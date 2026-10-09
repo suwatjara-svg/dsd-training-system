@@ -120,6 +120,7 @@ export default function PublicApplyForm({ course, form }: { course: any; form: a
       payload.append('occupation', formData.occupation);
       payload.append('educationLevel', formData.educationLevel);
       payload.append('address', formData.address);
+      payload.append('pdpaConsent', String(formData.pdpaConsent));
 
       // Append dynamic answers
       Object.entries(answers).forEach(([qId, val]) => {
