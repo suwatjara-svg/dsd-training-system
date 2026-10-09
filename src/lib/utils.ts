@@ -6,6 +6,20 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Format Full National ID Card (13 digits unmasked)
+ * Input: 1234567890123
+ * Output: 1-2345-67890-12-3
+ */
+export function formatFullIdCard(idCard: string | null | undefined): string {
+  if (!idCard) return '-';
+  const clean = idCard.replace(/\D/g, '');
+  if (clean.length === 13) {
+    return `${clean.slice(0, 1)}-${clean.slice(1, 5)}-${clean.slice(5, 10)}-${clean.slice(10, 12)}-${clean.slice(12)}`;
+  }
+  return idCard;
+}
+
+/**
  * Mask National ID Card for PDPA compliance
  * Input: 1100400123456
  * Output: 1-1004-XXXXX-45-6

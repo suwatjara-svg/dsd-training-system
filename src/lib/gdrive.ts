@@ -49,12 +49,30 @@ export async function uploadApplicationFile({
             mimeType: mimeType || 'application/octet-stream',
             body: Readable.from(buffer),
           },
+          supportsAllDrives: true,
           fields: 'id, webViewLink, webContentLink',
         });
 
+        const fileId = response.data.id;
+        if (fileId) {
+          try {
+            await drive.permissions.create({
+              fileId,
+              supportsAllDrives: true,
+              requestBody: {
+                role: 'reader',
+                type: 'anyone',
+              },
+            });
+          } catch (permErr: any) {
+            console.warn('Set drive permission warning:', permErr?.message);
+          }
+        }
+
+        const driveUrl = response.data.webViewLink || (fileId ? `https://drive.google.com/file/d/${fileId}/view?usp=sharing` : '');
         return {
-          fileUrl: response.data.webViewLink || response.data.webContentLink || '',
-          driveFileId: response.data.id || undefined,
+          fileUrl: driveUrl,
+          driveFileId: fileId || undefined,
         };
       } catch (folderErr: any) {
         console.warn('Upload with parents failed, attempting root upload:', folderErr?.message);
@@ -67,12 +85,30 @@ export async function uploadApplicationFile({
             mimeType: mimeType || 'application/octet-stream',
             body: Readable.from(buffer),
           },
+          supportsAllDrives: true,
           fields: 'id, webViewLink, webContentLink',
         });
 
+        const rootFileId = rootResponse.data.id;
+        if (rootFileId) {
+          try {
+            await drive.permissions.create({
+              fileId: rootFileId,
+              supportsAllDrives: true,
+              requestBody: {
+                role: 'reader',
+                type: 'anyone',
+              },
+            });
+          } catch (permErr: any) {
+            console.warn('Set drive root permission warning:', permErr?.message);
+          }
+        }
+
+        const rootDriveUrl = rootResponse.data.webViewLink || (rootFileId ? `https://drive.google.com/file/d/${rootFileId}/view?usp=sharing` : '');
         return {
-          fileUrl: rootResponse.data.webViewLink || rootResponse.data.webContentLink || '',
-          driveFileId: rootResponse.data.id || undefined,
+          fileUrl: rootDriveUrl,
+          driveFileId: rootFileId || undefined,
         };
       }
     } catch (err: any) {

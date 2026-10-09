@@ -18,8 +18,10 @@ import {
   Save,
   RotateCcw,
   Sparkles,
+  Copy,
+  Check,
 } from 'lucide-react';
-import { maskIdCard, formatPhoneNumber, formatThaiDate } from '@/lib/utils';
+import { maskIdCard, formatFullIdCard, formatPhoneNumber, formatThaiDate } from '@/lib/utils';
 
 export default function ScreeningPage() {
   const router = useRouter();
@@ -31,6 +33,7 @@ export default function ScreeningPage() {
   const [loading, setLoading] = useState(false);
   const [screeningData, setScreeningData] = useState<any>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [copiedId, setCopiedId] = useState(false);
 
   // Form states for current applicant
   const [qualStatus, setQualStatus] = useState<string>('PENDING');
@@ -342,18 +345,20 @@ export default function ScreeningPage() {
                   <button
                     onClick={handlePrev}
                     disabled={currentIndex === 0}
-                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:pointer-events-none"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs disabled:opacity-30 disabled:pointer-events-none shadow-xs transition cursor-pointer"
                     title="คนก่อนหน้า (P)"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>ย้อนกลับ</span>
                   </button>
                   <button
                     onClick={handleNext}
                     disabled={currentIndex >= (screeningData?.applicants?.length || 1) - 1}
-                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:pointer-events-none"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-sky-600 bg-sky-50 text-sky-800 hover:bg-sky-100 font-bold text-xs disabled:opacity-30 disabled:pointer-events-none shadow-xs transition cursor-pointer"
                     title="คนถัดไป (N)"
                   >
-                    <ChevronRight className="w-5 h-5" />
+                    <span>ถัดไป</span>
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -369,9 +374,25 @@ export default function ScreeningPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 mt-4 text-xs">
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <span className="text-slate-400 block font-medium">เลขประจำตัวประชาชน</span>
-                    <strong className="text-slate-700 text-sm font-mono mt-0.5 block">
-                      {maskIdCard(currentApplicant.idCardNumber)}
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-slate-400 block font-medium">เลขประจำตัวประชาชน</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const raw = (currentApplicant.idCardNumber || '').replace(/\D/g, '');
+                          navigator.clipboard.writeText(raw);
+                          setCopiedId(true);
+                          setTimeout(() => setCopiedId(false), 2000);
+                        }}
+                        className="text-[11px] font-bold text-sky-700 hover:text-sky-900 flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs hover:bg-sky-50 transition cursor-pointer"
+                        title="คลิกเพื่อคัดลอกเลข 13 หลักไปค้นหาในระบบอื่น"
+                      >
+                        {copiedId ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedId ? 'คัดลอกแล้ว!' : 'คัดลอก'}</span>
+                      </button>
+                    </div>
+                    <strong className="text-slate-800 text-sm font-mono font-bold block tracking-wider">
+                      {formatFullIdCard(currentApplicant.idCardNumber)}
                     </strong>
                   </div>
 
@@ -433,35 +454,70 @@ export default function ScreeningPage() {
                   เอกสารประกอบการสมัคร
                 </h4>
                 {currentApplicant.documents && currentApplicant.documents.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {currentApplicant.documents.map((doc: any) => (
-                      <div
-                        key={doc.id}
-                        className="p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:border-sky-300 transition"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-sky-600" />
-                          <div>
-                            <p className="font-semibold text-slate-800">{doc.documentTitle}</p>
-                            <span className="text-[10px] text-emerald-600 font-medium">
-                              {doc.status === 'APPROVED' ? 'ตรวจสอบแล้ว' : 'รอตรวจ'}
-                            </span>
-                          </div>
-                        </div>
-                        <a
-                          href={doc.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {currentApplicant.documents.map((doc: any) => {
+                      const isDriveUrl = doc.fileUrl && doc.fileUrl.startsWith('http');
+                      return (
+                        <div
+                          key={doc.id}
+                          className="p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:border-sky-300 bg-slate-50/50 transition gap-2"
                         >
-                          เปิดดู
-                        </a>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-4 h-4 text-sky-600 flex-shrink-0" />
+                            <div className="min-w-0 truncate">
+                              <p className="font-semibold text-slate-800 truncate">{doc.documentTitle}</p>
+                              <span className="text-[10px] text-emerald-600 font-medium block">
+                                {doc.fileName || 'เอกสารแนบ'}
+                              </span>
+                            </div>
+                          </div>
+                          {isDriveUrl ? (
+                            <a
+                              href={doc.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-xs transition flex-shrink-0"
+                            >
+                              เปิดดู
+                            </a>
+                          ) : (
+                            <span
+                              className="px-2 py-1 rounded bg-amber-50 text-amber-700 text-[10px] font-medium border border-amber-200 flex-shrink-0 text-center"
+                              title="ไฟล์อยู่ใน /tmp หรือยังไม่ได้เปิด Google Drive API ใน Google Cloud"
+                            >
+                              เปิดดูไม่ได้
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400">ไม่มีเอกสารแนบ</p>
                 )}
+              </div>
+
+              {/* Bottom Navigation Toolbar for Left Panel */}
+              <div className="border-t border-slate-100 pt-4 flex items-center justify-between">
+                <button
+                  onClick={handlePrev}
+                  disabled={currentIndex === 0}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs disabled:opacity-30 disabled:pointer-events-none shadow-xs transition cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>ย้อนกลับ (คนก่อนหน้า)</span>
+                </button>
+                <span className="text-xs font-semibold text-slate-500">
+                  คนลำดับที่ {currentIndex + 1} จาก {screeningData?.applicants?.length} คน
+                </span>
+                <button
+                  onClick={handleNext}
+                  disabled={currentIndex >= (screeningData?.applicants?.length || 1) - 1}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-sky-600 bg-sky-50 text-sky-800 hover:bg-sky-100 font-bold text-xs disabled:opacity-30 disabled:pointer-events-none shadow-xs transition cursor-pointer"
+                >
+                  <span>ถัดไป (คนต่อไป)</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -676,13 +732,23 @@ export default function ScreeningPage() {
               </div>
             </div>
 
-            {/* Quick Next Navigation */}
-            <div className="pt-2">
+            {/* Quick Prev / Next Navigation */}
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                onClick={handlePrev}
+                disabled={currentIndex === 0}
+                className="py-3 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>ย้อนกลับ (คนก่อนหน้า)</span>
+              </button>
+
               <button
                 onClick={handleNext}
-                className="w-full py-3 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition"
+                disabled={currentIndex >= (screeningData?.applicants?.length || 1) - 1}
+                className="py-3 rounded-xl bg-slate-900 text-white hover:bg-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition disabled:opacity-40 disabled:hover:bg-slate-900"
               >
-                <span>บันทึกและไปคนถัดไป (Next Person)</span>
+                <span>ไปคนถัดไป</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
