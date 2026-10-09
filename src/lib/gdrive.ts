@@ -25,7 +25,7 @@ export async function uploadApplicationFile({
   buffer: Buffer;
 }): Promise<{ fileUrl: string; driveFileId?: string }> {
   const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID || '1im_FTcn_RMy7mRnQ9bDMX7O0qZdFfJNU';
-  const webhookUrl = process.env.GOOGLE_DRIVE_WEBHOOK_URL;
+  const webhookUrl = process.env.GOOGLE_DRIVE_WEBHOOK_URL || 'https://script.google.com/macros/s/AKfycbydn7_0E3nKHCe_EP6BpAOUURr2rCFg9Ow6eGBZ3dskOlTpYsLwd-0fCXQctCZRMvZj/exec';
 
   // 1. If Google Apps Script Web App is configured, upload directly through the owner's Google Drive
   if (webhookUrl) {
@@ -33,7 +33,8 @@ export async function uploadApplicationFile({
       const base64 = buffer.toString('base64');
       const res = await fetch(webhookUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
           folderId: parentFolderId,
           fileName: `${applicationNumber}_${documentTitle}_${fileName}`,
